@@ -37,15 +37,27 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Código de convite: o próprio Personal cria o seu (nunca sobrescreve um existente).
     match /convites/{codigo} {
       allow read: if signed();
-      allow write: if isG();
+      allow create: if isG() || (signed() && novo().personalId == me()
+        && existsAfter(pth('personais', me())) && getAfter(pth('personais', me())).data.codigo == codigo);
+      allow update, delete: if isG();
+    }
+
+    // Denúncias de perfis na busca: qualquer usuário cria; só o gestor lê e trata.
+    match /denuncias/{id} {
+      allow create: if signed() && novo().autorId == me() && novo().status == 'aberta';
+      allow read, update, delete: if isG();
     }
 
     // Perfil profissional do Personal (público para usuários logados).
     match /personais/{uid} {
       allow read: if signed();
-      allow create, delete: if isG();
+      // Autocadastro: o usuário cria o próprio registro de Personal, sem CREF conferido.
+      allow create: if isG() || (signed() && me() == uid && novo().get('crefVerificado', false) == false
+        && novo().get('codigo', '') != '' && getAfter(pth('convites', novo().codigo)).data.personalId == me());
+      allow delete: if isG();
       allow update: if isG()
         || (isP() && me() == uid
             && so(['publico', 'bio', 'especialidades', 'cidade', 'uf', 'bairros', 'academias', 'modalidade', 'faixaPreco', 'contato', 'cref', 'crefVerificado', 'nome', 'atualizado'])
@@ -84,7 +96,9 @@ service cloud.firestore {
         || (isP() && novo().papel == 'aluno' && pid(novo()) == '');
       allow update: if isG()
         || (signed() && me() == uid
-            && novo().papel == antigo().papel
+            && (novo().papel == antigo().papel
+                || (novo().papel == 'personal' && existsAfter(pth('personais', me())))
+                || (novo().papel == 'aluno' && !existsAfter(pth('personais', me()))))
             && novo().get('ativo', true) == antigo().get('ativo', true)
             && (pid(novo()) == pid(antigo()) || pid(novo()) == '' || vinculoOK(novo())))
         || (isP() && pid(antigo()) == me() && pid(novo()) == me() && novo().papel == antigo().papel)

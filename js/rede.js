@@ -41,7 +41,7 @@ async function alunoEncerra(){const p=ME();const v=vincs().find(x=>x.id===p.vinc
  p.personalId='';p.vinculoId='';p.convite='';await putNow('perfis',p);restamp(S.me)}
 async function desvincular(){return alunoEncerra()}
 let syncing=false;
-async function syncVinculo(){if(S.p||syncing||!fdb)return;const p=ME();if(!p||!p.aceite)return;syncing=true;
+async function syncVinculo(){if(syncing||!fdb)return;const p=ME();if(!p||!p.aceite)return;syncing=true;
  try{const ativos=vincs().filter(v=>v.alunoId===S.me&&v.status==='ativo').sort((a,b)=>(b.respondido||0)-(a.respondido||0));const v=ativos[0];
   if(v&&(p.personalId!==v.personalId||p.vinculoId!==v.id)){
    if(!S.g||!p.personalId||p.vinculoId){for(const o of ativos.slice(1))await upd('vinculos',o.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'aluno'});
@@ -101,8 +101,9 @@ function meuPersonalBox(){const p=ME()||{};const P=S.pf||{};const C=S.conf;
  </section>`}
 function viewPerfil(){const p=ME()||{nome:'',email:''};
  const head=`<section class="panel"><div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div>${verifBox()}</section>`;
- const corpo=S.p&&!S.g?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>${perfilPublicoForm()}`:meuPersonalBox();
- return page(S.g?'Gestor':S.p?'Personal':'Aluno','Meu perfil',`${head}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><button class="btn danger" data-act="logout">Sair da conta</button>`)}
+ const modo=S.p?`<section class="panel" style="gap:8px"><div class="eyebrow">Como usar o app agora</div><div class="seg" style="grid-template-columns:1fr 1fr"><button data-act="modo" data-v="personal" class="${PM()?'on':''}">Modo Personal</button><button data-act="modo" data-v="aluno" class="${PM()?'':'on'}">Modo aluno (meus treinos)</button></div></section>`:'';
+ const corpo=PM()?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>${perfilPublicoForm()}`:meuPersonalBox()+(S.p?'':souPersonalBox());
+ return page(S.g?'Gestor':PM()?'Personal':'Aluno','Meu perfil',`${head}${modo}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><button class="btn danger" data-act="logout">Sair da conta</button>`)}
 
 /* ---------- Perfil público do Personal ---------- */
 function ppDraft(){if(!S.pp){const d=S.pdoc||{};const m=String(d.cref||'').match(/^(\d+)-?([GP])\/?([A-Z]{2})$/)||[];
@@ -149,17 +150,17 @@ async function salvarAcademia(){const A=S.ac;if(!(A.nome||'').trim()||!(A.cidade
  const a={id:uid('a'),nome:A.nome.trim(),cep:String(A.cep||'').replace(/\D/g,''),endereco:(A.endereco||'').trim(),numero:(A.numero||'').trim(),bairro:(A.bairro||'').trim(),cidade:A.cidade.trim(),uf:A.uf||'SP',aprovada:!!S.g,sugeridaPor:S.me,criado:Date.now()};
  await setDoc('academias',a);if(S.p&&S.pp&&!S.pp.academias.includes(a.id))S.pp.academias.push(a.id);return a}
 function gestaoAcademias(){const C=S.conf;const l=[...(S.academias||[])].sort((a,b)=>(a.aprovada?1:0)-(b.aprovada?1:0)||a.nome.localeCompare(b.nome,'pt'));
- return `${academiaForm()}${l.map(a=>{const n=(S.personais||[]).filter(x=>(x.academias||[]).includes(a.id)).length;const k='delac:'+a.id;
+ return `${osmBox()}${academiaForm()}${l.map(a=>{const n=(S.personais||[]).filter(x=>(x.academias||[]).includes(a.id)).length;const k='delac:'+a.id;
   return `<section class="panel" style="gap:8px"><div class="row"><div class="grow"><h3>${esc(a.nome)}</h3><div class="small muted">${esc([a.endereco&&(a.endereco+(a.numero?', '+a.numero:'')),a.bairro,a.cidade&&(a.cidade+'/'+a.uf)].filter(Boolean).join(' · '))}</div><div class="small muted">${n} Personal${n===1?'':'s'} · sugerida por ${esc(nomeP(a.sugeridaPor)||perfil(a.sugeridaPor)?.nome||'—')}</div></div><span class="chip ${a.aprovada?'on':''}">${a.aprovada?'Aprovada':'Pendente'}</span></div>
   ${C===k?`<div class="miniconf"><span class="grow">Excluir esta academia?</span><button class="btn sm danger" data-act="acdel" data-v="${a.id}">Excluir</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<div class="nav2">${a.aprovada?'<span></span>':`<button class="btn primary" data-act="acapr" data-v="${a.id}">Aprovar</button>`}<button class="btn danger" data-act="conf" data-v="${k}">Excluir</button></div>`}</section>`}).join('')||'<div class="empty">Nenhuma academia cadastrada.</div>'}`}
 
 /* ---------- Busca de Personais ---------- */
-function viewBusca(){const B=S.busca||(S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:''});
+function viewBusca(){const B=S.busca||(S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:'',cref:''});
  const todos=((S.g?S.personais:S.pubs)||[]).filter(x=>x.publico&&x.id!==S.me);
  const cidades=[...new Set(todos.map(x=>x.cidade&&x.cidade+'/'+x.uf).filter(Boolean))].sort();
  const acs=(S.academias||[]).filter(a=>a.aprovada&&(!B.cidade||a.cidade+'/'+a.uf===B.cidade)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
  const bq=nk(B.bairro||'');
- const res=todos.filter(x=>(!B.cidade||x.cidade+'/'+x.uf===B.cidade)&&(!bq||(x.bairros||[]).some(b=>nk(b).includes(bq)))&&(!B.acad||(x.academias||[]).includes(B.acad))&&(!B.esp||(x.especialidades||[]).includes(B.esp))&&(!B.mod||x.modalidade===B.mod||x.modalidade==='ambos'))
+ const res=todos.filter(x=>(!B.cidade||x.cidade+'/'+x.uf===B.cidade)&&(!bq||(x.bairros||[]).some(b=>nk(b).includes(bq)))&&(!B.acad||(x.academias||[]).includes(B.acad))&&(!B.esp||(x.especialidades||[]).includes(B.esp))&&(!B.mod||x.modalidade===B.mod||x.modalidade==='ambos')&&(!B.cref||!!x.cref))
   .sort((a,b)=>(b.cref?1:0)-(a.cref?1:0)||(a.nome||'').localeCompare(b.nome||'','pt'));
  const meu=ME()?.personalId;
  const card=x=>{const v=vincs().find(y=>y.alunoId===S.me&&y.personalId===x.id&&y.status==='pendente');const ac=(x.academias||[]).map(acad).filter(a=>a&&a.aprovada);
@@ -169,16 +170,19 @@ function viewBusca(){const B=S.busca||(S.busca={cidade:'',bairro:'',acad:'',esp:
    ${x.bio?`<div class="small">${esc(x.bio)}</div>`:''}
    ${ac.length?`<div class="small">Academias: ${ac.map(a=>`<button class="lnk" data-act="bacad" data-v="${a.id}">${esc(a.nome)}</button>`).join(', ')}</div>`:''}
    ${x.faixaPreco||x.contato?`<div class="small muted">${esc([x.faixaPreco,x.contato].filter(Boolean).join(' · '))}</div>`:''}
-   ${S.p&&!S.g?'':meu===x.id?'<span class="chip on" style="align-self:flex-start">Seu Personal</span>':v?`<div class="row small" style="gap:8px"><span class="grow">Solicitação enviada · aguardando aceite</span><button class="btn sm ghost" data-act="vcan" data-v="${v.id}">Cancelar</button></div>`:`<button class="btn primary" data-act="bsol" data-v="${x.id}">Solicitar acompanhamento</button>`}</section>`};
+   ${denunciaForm(x)}
+   ${PM()?'':meu===x.id?'<span class="chip on" style="align-self:flex-start">Seu Personal</span>':v?`<div class="row small" style="gap:8px"><span class="grow">Solicitação enviada · aguardando aceite</span><button class="btn sm ghost" data-act="vcan" data-v="${v.id}">Cancelar</button></div>`:`<button class="btn primary" data-act="bsol" data-v="${x.id}">Solicitar acompanhamento</button>`}</section>`};
  const sel=(k,lab,opts)=>`<select data-bs="${k}" aria-label="${lab}"><option value="">${lab}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${B[k]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
  return page('Busca','Encontrar um Personal',`<section class="panel" style="gap:8px">${sel('cidade','Todas as cidades',cidades.map(c=>[c,c]))}
   <input class="txt" data-bs="bairro" value="${esc(B.bairro)}" placeholder="Bairro" aria-label="Bairro">
   ${sel('acad','Todas as academias',acs.map(a=>[a.id,a.nome+(a.bairro?' · '+a.bairro:'')]))}
   <div class="grid2">${sel('esp','Especialidade',ESPEC.map(e=>[e,e]))}${sel('mod','Modalidade',Object.entries(MODS).filter(([k])=>k!=='ambos'))}</div>
+  <label class="check"><input type="checkbox" data-bs="cref" ${B.cref?'checked':''}>Somente com CREF informado</label>
   ${Object.values(B).some(Boolean)?'<button class="btn sm ghost" data-act="bclear">Limpar filtros</button>':''}</section>
   ${S.bMsg?`<div class="note ${S.bMsg.c}">${esc(S.bMsg.t)}</div>`:''}
   <div class="eyebrow">${res.length} Personal${res.length===1?'':'s'} encontrado${res.length===1?'':'s'}</div>
-  ${res.map(card).join('')||'<div class="empty">Nenhum Personal com esses filtros. Tente ampliar a busca.</div>'}`,{back:'perfil'})}
+  ${res.map(card).join('')||'<div class="empty">Nenhum Personal com esses filtros. Tente ampliar a busca.</div>'}
+  ${(S.academias||[]).some(a=>a.fonte==='osm')?'<div class="small muted" style="text-align:center">Parte dos dados de academias © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contribuidores do OpenStreetMap</a> (ODbL).</div>':''}`,{back:'perfil'})}
 
 /* ---------- Painel do Personal com solicitações ---------- */
 function solicitacoesBox(){const meus=vincs().filter(v=>v.personalId===S.me);const I=S.inv;
@@ -197,23 +201,24 @@ function viewAlunos(){return page('Painel do Personal','Alunos',codigoCard()+sol
 
 /* ---------- Gestão ---------- */
 function viewGestao(){const g=S.gsub;
- const st=`<div class="subtabs">${[['alunos','Alunos'],['personais','Personais'],['academias','Academias'],['modelos','Modelos']].map(([k,l])=>`<button data-act="gsub" data-v="${k}" class="${g===k?'on':''}">${l}</button>`).join('')}</div>`;
+ const st=`<div class="subtabs">${[['alunos','Alunos'],['personais','Personais'+((S.denuncias||[]).some(d=>d.status==='aberta')?'<i class="badge" aria-label="denúncia aberta"></i>':'')],['academias','Academias'],['modelos','Modelos']].map(([k,l])=>`<button data-act="gsub" data-v="${k}" class="${g===k?'on':''}">${l}</button>`).join('')}</div>`;
  let body;
  if(g==='modelos')body=`<div class="small muted">Modelos do gestor ficam disponíveis para todos os Personais e alunos.</div>`+fichasList('modelos');
  else if(g==='academias')body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}`+gestaoAcademias();
  else if(g==='personais'){const C=S.conf;const cand=S.perfis.filter(p=>p.papel!=='personal'&&!S.personais.some(x=>x.id===p.id)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
-  body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}
+  body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}${denunciasBox()}
+  <div class="small muted">Os usuários podem ativar o acesso de Personal em Meu perfil. Use a opção abaixo apenas para liberar alguém manualmente.</div>
   <section class="form"><h3>Liberar novo Personal</h3><div class="small muted">A pessoa precisa ter entrado no app ao menos uma vez.</div>
   <select id="lp-sel" aria-label="Usuário"><option value="">Escolha o usuário</option>${cand.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.email?' · '+esc(p.email):''}</option>`).join('')}</select>
   <button class="btn primary" data-act="lpgo">Liberar como Personal</button></section>
-  ${S.personais.map(x=>{const n=alunos(true).filter(a=>a.personalId===x.id).length;const k='rev:'+x.id;return `<section class="panel" style="gap:8px"><div class="row">${avatar({id:x.id,nome:x.nome,papel:'aluno'})}<div class="grow"><h2>${esc(x.nome)}</h2><div class="small muted">${n} aluno${n===1?'':'s'} · código <b class="num" style="color:var(--ink);font-size:16px">${esc(x.codigo||'')}</b> · ${x.publico?'na busca':'fora da busca'}</div><div>${selo(x)||'<span class="small muted">Sem CREF informado</span>'}</div></div></div>
+  ${S.personais.map(x=>{const n=alunos(true).filter(a=>a.personalId===x.id).length;const k='rev:'+x.id;return `<section class="panel" style="gap:8px"><div class="row">${avatar({id:x.id,nome:x.nome,papel:'aluno'})}<div class="grow"><h2>${esc(x.nome)}</h2><div class="small muted">${n} aluno${n===1?'':'s'} · código <b class="num" style="color:var(--ink);font-size:16px">${esc(x.codigo||'')}</b> · ${x.publico?'na busca':'fora da busca'}${x.autoCadastro?' · autocadastro':''}</div><div>${selo(x)||'<span class="small muted">Sem CREF informado</span>'}</div></div></div>
    ${x.cref?`<button class="btn sm ghost" style="align-self:flex-start" data-act="crefv" data-v="${x.id}">${x.crefVerificado?'Remover marcação de CREF conferido':'Marcar CREF como conferido'}</button>`:''}
    ${C===k?(n?`<div class="note warn">Transfira os ${n} alunos antes de revogar (aba Alunos → aluno → Cadastro). <button class="btn sm ghost" data-act="conf" data-v="">Ok</button></div>`:`<div class="miniconf"><span class="grow">Revogar o acesso de Personal?</span><button class="btn sm danger" data-act="revgo" data-v="${x.id}">Revogar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`):`<div class="nav2"><button class="btn ghost" data-act="gfgo" data-v="${x.id}">Ver alunos</button><button class="btn danger" data-act="conf" data-v="${k}">Revogar acesso</button></div>`}</section>`}).join('')||'<div class="empty">Nenhum Personal liberado ainda.</div>'}`}
  else body=alunosBody();
  return page('Painel do gestor','Gestão',st+body)}
 
 /* ---------- Cartões da tela inicial do aluno ---------- */
-function semPersonal(){if(S.p&&!S.g)return '';const rec=convitesRecebidos();
+function semPersonal(){if(PM())return '';const rec=convitesRecebidos();
  if(rec.length)return `<button class="banner" data-act="tab" data-v="perfil"><span class="grow"><b>${esc(rec[0].personalNome)}</b> quer acompanhar seus treinos<br><span class="small">Toque para ver e responder</span></span><span>›</span></button>`;
  if(ME()?.personalId||LS.get('ft4.semP',0))return '';
  return `<section class="panel" style="gap:8px"><div class="eyebrow">Tem um Personal?</div><div class="small">Encontre um Personal na sua região ou informe o código dele para que acompanhe seus treinos.</div><div class="nav2"><button class="btn ghost" data-act="semPno">Agora não</button><button class="btn primary" data-act="tab" data-v="busca">Encontrar Personal</button></div></section>`}
@@ -229,7 +234,7 @@ document.addEventListener('change',e=>{const el=e.target;
  if(el.dataset.pp&&S.pp){S.pp[el.dataset.pp]=el.type==='checkbox'?el.checked:el.value;if(el.dataset.pp.startsWith('cref'))render()}
  if(el.dataset.ppac&&S.pp){const id=el.dataset.ppac,l=S.pp.academias;if(el.checked&&!l.includes(id))l.push(id);if(!el.checked)S.pp.academias=l.filter(x=>x!==id)}
  if(el.dataset.ac&&S.ac)S.ac[el.dataset.ac]=el.value;
- if(el.dataset.bs&&el.dataset.bs!=='bairro'&&S.busca){S.busca[el.dataset.bs]=el.value;if(el.dataset.bs==='cidade')S.busca.acad='';render()}
+ if(el.dataset.bs&&el.dataset.bs!=='bairro'&&S.busca){S.busca[el.dataset.bs]=el.type==='checkbox'?(el.checked?'1':''):el.value;if(el.dataset.bs==='cidade')S.busca.acad='';render()}
 });
 function run(p,ok,errKey){p.then(ok).catch(e=>{console.warn(e);const t=errMsg(e);if(errKey==='pf')S.pf={...(S.pf||{}),busy:false,err:t};else if(errKey==='v')S.vMsg={c:'bad',t};else if(errKey==='pp')S.ppMsg={c:'bad',t};else if(errKey==='ac'){S.ac&&(S.ac.err=t)}else if(errKey==='b')S.bMsg={c:'bad',t};else S.gmsg={c:'bad',t};render()})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const v=b.dataset.v;
@@ -245,7 +250,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'vcan':run(upd('vinculos',v,{status:'cancelado',respondido:Date.now()}),()=>{S.pf={ok:'Solicitação cancelada.'};S.bMsg=null;render()},'pf');break;
   case 'bsol':run(solicitar(v,'busca'),n=>{S.bMsg={c:'good',t:`Solicitação enviada a ${n}. Você será avisado quando ele aceitar.`};render()},'b');break;
   case 'bacad':S.busca={...(S.busca||{}),acad:v};render();window.scrollTo(0,0);break;
-  case 'bclear':S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:''};render();break;
+  case 'bclear':S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:'',cref:''};render();break;
   case 'pace':run(upd('vinculos',v,{status:'ativo',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Solicitação aceita. O aluno aparece na sua lista assim que abrir o app.'};render()},'v');break;
   case 'prec':run(upd('vinculos',v,{status:'recusado',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Solicitação recusada.'};render()},'v');break;
   case 'pcan':run(upd('vinculos',v,{status:'cancelado',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Convite cancelado.'};render()},'v');break;
@@ -263,5 +268,101 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'acapr':run(upd('academias',v,{aprovada:true}),()=>{S.gmsg={c:'good',t:'Academia aprovada.'};render()});break;
   case 'acdel':run(fdb.collection('academias').doc(v).delete().then(()=>{S.academias=S.academias.filter(a=>a.id!==v)}),()=>{S.conf=null;S.gmsg={c:'good',t:'Academia excluída.'};render()});break;
   case 'crefv':{const x=S.personais.find(y=>y.id===v);run(upd('personais',v,{crefVerificado:!x.crefVerificado}),()=>render());break}
+ }
+});
+
+/* ---------- Autocadastro de Personal ---------- */
+const DECL='Declaro que sou profissional de Educação Física habilitado(a) a prescrever e acompanhar treinos, nos termos da Lei nº 9.696/1998, que as informações do meu perfil são verdadeiras e que respondo pelas orientações que der aos alunos.';
+function souPersonalBox(){const F=S.sp;
+ if(!F)return `<section class="panel" style="gap:8px"><div class="eyebrow">Você é Personal?</div><div class="small">Ative o acesso de Personal para montar fichas, acompanhar alunos e aparecer na busca. Você continua podendo registrar os seus próprios treinos.</div><button class="btn ghost" data-act="spopen">Sou Personal</button></section>`;
+ return `<section class="form"><h3>Ativar acesso de Personal</h3>
+  <div class="field"><label class="lbl" for="sp-nome">Nome profissional</label><input id="sp-nome" class="txt" data-sp="nome" value="${esc(F.nome)}"></div>
+  <div class="grid2"><div class="field"><label class="lbl" for="sp-cid">Cidade</label><input id="sp-cid" class="txt" data-sp="cidade" value="${esc(F.cidade)}" placeholder="Campinas"></div><div class="field"><label class="lbl" for="sp-uf">UF</label><select id="sp-uf" data-sp="uf">${UFS.map(u=>`<option ${F.uf===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="field"><span class="lbl">CREF (opcional · exibe o selo no perfil)</span><div class="grid3"><input class="txt" data-sp="crefNum" inputmode="numeric" maxlength="6" value="${esc(F.crefNum)}" placeholder="Número" aria-label="Número do CREF"><select data-sp="crefCat" aria-label="Categoria"><option ${F.crefCat==='G'?'selected':''}>G</option><option ${F.crefCat==='P'?'selected':''}>P</option></select><select data-sp="crefUF" aria-label="UF do CREF">${UFS.map(u=>`<option ${F.crefUF===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="small muted">${esc(DECL)}</div><label class="check"><input type="checkbox" id="sp-ok">Li e declaro</label>
+  ${F.err?`<div class="note bad">${esc(F.err)}</div>`:''}
+  <div class="nav2"><button class="btn ghost" data-act="spcancel">Cancelar</button><button class="btn primary" data-act="spgo" ${F.busy?'disabled':''}>Ativar acesso</button></div></section>`}
+async function autoCadastroPersonal(){const F=S.sp;const nome=(F.nome||'').trim()||ME().nome;
+ if(!(F.cidade||'').trim())throw new Error('Informe a cidade onde atende.');
+ const num=String(F.crefNum||'').replace(/\D/g,'');if(num&&(num.length<3||num.length>6))throw new Error('O número do CREF deve ter de 3 a 6 dígitos.');
+ let codigo='';for(let i=0;i<8&&!codigo;i++){const c=novoCodigo(nome);const d=await fdb.collection('convites').doc(c).get();if(!d.exists)codigo=c}
+ if(!codigo)throw new Error('Não foi possível gerar o código agora. Tente de novo.');
+ const cref=num?crefFmt({crefNum:num,crefCat:F.crefCat,crefUF:F.crefUF}):'';
+ const b=fdb.batch();
+ b.set(fdb.collection('personais').doc(S.me),{nome,codigo,criado:Date.now(),publico:false,cidade:F.cidade.trim(),uf:F.uf,bairros:[],especialidades:[],academias:[],modalidade:'presencial',bio:'',faixaPreco:'',contato:'',cref,crefVerificado:false,autoCadastro:true,declaracao:{versao:TERMOS_V,em:Date.now(),texto:DECL}});
+ b.set(fdb.collection('convites').doc(codigo),{personalId:S.me});
+ b.update(fdb.collection('perfis').doc(S.me),{papel:'personal'});
+ await b.commit();S.modo='personal';LS.set('ft4.modo','personal');S.sp=null;S.pp=null;
+ if(S.g)await onAuth(fbAuth.currentUser);return codigo}
+
+/* ---------- Denúncias ---------- */
+const MOTIVOS=['Perfil falso','CREF incorreto','Conduta inadequada','Outro'];
+function denunciaForm(x){const D=S.den;if(!D||D.alvo!==x.id)return PM()?'':`<button class="lnk small" style="align-self:flex-start;color:var(--muted)" data-act="denopen" data-v="${x.id}">Denunciar perfil</button>`;
+ return `<div class="form" style="gap:8px"><h3>Denunciar perfil</h3><select data-den="motivo" aria-label="Motivo">${MOTIVOS.map(m=>`<option ${D.motivo===m?'selected':''}>${m}</option>`).join('')}</select>
+  <textarea class="txt" data-den="texto" maxlength="600" placeholder="Conte o que aconteceu (opcional)">${esc(D.texto||'')}</textarea>
+  <div class="small muted">A denúncia vai para a administração da plataforma. O Personal não vê quem denunciou.</div>
+  <div class="nav2"><button class="btn ghost" data-act="dencancel">Cancelar</button><button class="btn danger" data-act="densend">Enviar denúncia</button></div></div>`}
+function denunciasBox(){const ab=(S.denuncias||[]).filter(d=>d.status==='aberta').sort((a,b)=>b.criado-a.criado);if(!ab.length)return '';
+ return `<section class="panel" style="gap:10px;border-color:var(--bad)"><div class="eyebrow" style="color:var(--bad)">Denúncias abertas · ${ab.length}</div>
+ ${ab.map(d=>`<div style="display:grid;gap:4px"><div><b>${esc(d.alvoNome)}</b> · ${esc(d.motivo)}</div>${d.texto?`<div class="small">“${esc(d.texto)}”</div>`:''}<div class="small muted">por ${esc(perfil(d.autorId)?.nome||'usuário')} · ${ddmm(d.criado)}</div>
+  <div class="nav2"><button class="btn sm ghost" data-act="denarq" data-v="${d.id}">Arquivar</button><button class="btn sm danger" data-act="conf" data-v="rev:${d.alvoId}">Revogar Personal</button></div></div>`).join('<hr style="border:0;border-top:1px solid var(--line);width:100%">')}</section>`}
+
+/* ---------- Importação de academias do OpenStreetMap ---------- */
+const OSM_URL='https://overpass-api.de/api/interpreter';
+function osmBox(){const O=S.osm||(S.osm={cidade:'Campinas',uf:'SP'});
+ const head=`<section class="form" style="gap:10px"><h3>Importar do OpenStreetMap</h3><div class="small muted">Busca academias cadastradas no OpenStreetMap para a cidade escolhida. Você revisa a lista e escolhe quais importar.</div>
+  <div class="grid2"><input class="txt" data-osm="cidade" value="${esc(O.cidade)}" aria-label="Cidade"><select data-osm="uf" aria-label="UF">${UFS.map(u=>`<option ${O.uf===u?'selected':''}>${u}</option>`).join('')}</select></div>
+  <button class="btn primary" data-act="osmgo" ${O.loading?'disabled':''}>${O.loading?'Buscando… pode levar até 1 minuto':'Buscar academias'}</button>
+  ${O.err?`<div class="note bad">${esc(O.err)}</div>`:''}${O.ok?`<div class="note good">${esc(O.ok)}</div>`:''}`;
+ if(!O.items)return head+'</section>';
+ const novos=O.items.filter(i=>!i.dup),sel=O.items.filter(i=>i.sel).length;
+ return head+`<div class="row small" style="gap:8px;flex-wrap:wrap"><b class="grow">${O.items.length} encontradas · ${O.items.length-novos.length} já cadastradas</b><button class="btn sm ghost" data-act="osmall" data-v="1">Marcar todas</button><button class="btn sm ghost" data-act="osmall" data-v="0">Desmarcar</button></div>
+  <div style="max-height:420px;overflow:auto;display:grid;gap:2px">${O.items.map((i,k)=>`<label class="check" style="align-items:flex-start"><input type="checkbox" data-osmi="${k}" ${i.sel?'checked':''} ${i.dup?'disabled':''}><span><b>${esc(i.nome)}</b>${i.dup?' <span class="small muted">· já cadastrada</span>':''}<br><span class="small muted">${esc([i.endereco&&(i.endereco+(i.numero?', '+i.numero:'')),i.bairro,i.cep].filter(Boolean).join(' · ')||'Sem endereço no OpenStreetMap')}</span></span></label>`).join('')}</div>
+  <button class="btn primary" data-act="osmimp" ${sel&&!O.saving?'':'disabled'}>${O.saving?'Importando…':`Importar ${sel} academia${sel===1?'':'s'}`}</button>
+  <div class="small muted">Dados © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contribuidores do OpenStreetMap</a>, licença ODbL.</div></section>`}
+async function osmBuscar(){const O=S.osm;O.err='';O.ok='';O.items=null;O.loading=true;render();
+ const cid=String(O.cidade||'').trim().replace(/"/g,'');
+ const q=`[out:json][timeout:60];area["ISO3166-2"="BR-${O.uf}"]->.uf;rel(area.uf)["boundary"="administrative"]["admin_level"="8"]["name"="${cid}"];map_to_area->.a;(nwr["leisure"="fitness_centre"](area.a);nwr["sport"~"fitness|crossfit|bodybuilding"](area.a););out center tags;`;
+ try{const r=await fetch(OSM_URL,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  if(!r.ok)throw new Error('O OpenStreetMap respondeu com erro '+r.status+'. Tente de novo em alguns minutos.');
+  const j=await r.json();const vistos=new Set();
+  const ex=new Set((S.academias||[]).map(a=>nk(a.nome)+'|'+(a.cep||'')));const exNome=new Set((S.academias||[]).map(a=>nk(a.nome)));const exOsm=new Set((S.academias||[]).map(a=>a.osm).filter(Boolean));
+  O.items=(j.elements||[]).filter(e=>e.tags&&e.tags.name).map(e=>{const t=e.tags;const cep=String(t['addr:postcode']||'').replace(/\D/g,'');
+   const it={osm:e.type+'/'+e.id,nome:t.name.trim(),endereco:t['addr:street']||'',numero:t['addr:housenumber']||'',bairro:t['addr:suburb']||t['addr:neighbourhood']||t['addr:district']||'',cep,cidade:t['addr:city']||cid,uf:O.uf,lat:e.lat??e.center?.lat??null,lon:e.lon??e.center?.lon??null};
+   it.dup=exOsm.has(it.osm)||ex.has(nk(it.nome)+'|'+cep)||(!cep&&exNome.has(nk(it.nome)));it.sel=!it.dup;return it})
+   .filter(i=>{const k=nk(i.nome)+'|'+i.endereco;if(vistos.has(k))return false;vistos.add(k);return true}).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  if(!O.items.length)O.err=`Nenhuma academia encontrada no OpenStreetMap para ${cid}/${O.uf}. Confira o nome da cidade, com acentos.`;
+ }catch(e){O.err=e.message.startsWith('O Open')?e.message:'Não foi possível consultar o OpenStreetMap agora. Verifique a conexão e tente de novo.'}
+ O.loading=false;render()}
+async function osmImportar(){const O=S.osm;const sel=O.items.filter(i=>i.sel&&!i.dup);O.saving=true;render();
+ for(let k=0;k<sel.length;k+=400){const b=fdb.batch();sel.slice(k,k+400).forEach(i=>{const id='osm-'+i.osm.replace('/','-');const a={id,nome:i.nome,cep:i.cep,endereco:i.endereco,numero:i.numero,bairro:i.bairro,cidade:i.cidade,uf:i.uf,lat:i.lat,lon:i.lon,aprovada:true,sugeridaPor:S.me,fonte:'osm',osm:i.osm,criado:Date.now()};b.set(fdb.collection('academias').doc(id),a);i.dup=true;i.sel=false});await b.commit()}
+ O.saving=false;O.ok=`${sel.length} academia${sel.length===1?' importada':'s importadas'}. Elas já aparecem na busca e no perfil dos Personais.`;render()}
+
+/* ---------- Cliques e campos da etapa 3 ---------- */
+document.addEventListener('input',e=>{const el=e.target;
+ if(el.dataset.sp&&S.sp)S.sp[el.dataset.sp]=el.value;
+ if(el.dataset.den&&S.den)S.den[el.dataset.den]=el.value;
+ if(el.dataset.osm&&S.osm)S.osm[el.dataset.osm]=el.value;
+});
+document.addEventListener('change',e=>{const el=e.target;
+ if(el.dataset.sp&&S.sp)S.sp[el.dataset.sp]=el.value;
+ if(el.dataset.den&&S.den)S.den[el.dataset.den]=el.value;
+ if(el.dataset.osm&&S.osm)S.osm[el.dataset.osm]=el.value;
+ if(el.dataset.osmi!==undefined&&S.osm?.items){S.osm.items[+el.dataset.osmi].sel=el.checked;render()}
+});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const v=b.dataset.v;
+ switch(b.dataset.act){
+  case 'modo':S.modo=v;LS.set('ft4.modo',v);S.view=v==='personal'?'alunos':'inicio';render();window.scrollTo(0,0);break;
+  case 'spopen':S.sp={nome:ME()?.nome||'',cidade:'',uf:'SP',crefNum:'',crefCat:'G',crefUF:'SP'};render();break;
+  case 'spcancel':S.sp=null;render();break;
+  case 'spgo':{if(!$('#sp-ok')?.checked){S.sp.err='Marque “Li e declaro” para continuar.';render();break}S.sp.busy=true;S.sp.err='';render();
+   autoCadastroPersonal().then(c=>{toast('Acesso de Personal ativado. Seu código: '+c)}).catch(err=>{S.sp.busy=false;S.sp.err=errMsg(err);render()});break}
+  case 'denopen':S.den={alvo:v,motivo:MOTIVOS[0],texto:''};render();break;
+  case 'dencancel':S.den=null;render();break;
+  case 'densend':{const D=S.den,x=pub(D.alvo)||{};run(fdb.collection('denuncias').doc(uid('d')).set({alvoId:D.alvo,alvoNome:x.nome||'',motivo:D.motivo,texto:(D.texto||'').trim(),autorId:S.me,status:'aberta',criado:Date.now()}),()=>{S.den=null;S.bMsg={c:'good',t:'Denúncia enviada. Obrigado por avisar.'};render()},'b');break}
+  case 'denarq':run(upd('denuncias',v,{status:'arquivada',tratada:Date.now()}),()=>render());break;
+  case 'osmgo':osmBuscar();break;
+  case 'osmall':S.osm.items.forEach(i=>{if(!i.dup)i.sel=v==='1'});render();break;
+  case 'osmimp':osmImportar().catch(err=>{S.osm.saving=false;S.osm.err='Falha ao importar: '+errMsg(err);render()});break;
  }
 });

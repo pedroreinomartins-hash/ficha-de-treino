@@ -89,10 +89,10 @@ function normF(f){let ch=false;
  return f}
 function normS(s){s.letra=s.letra||s.treino||'A';s.fichaId=s.fichaId||'f-tendinite';s.treinoId=s.treinoId||s.letra;
  const ex={};for(const[k,r]of Object.entries(s.ex||{}))ex[k]={...r,n:r.n||LEGACY[k]||k};s.ex=ex;delete s.pending;delete s._p;return s}
-const NORM={perfis:normP,fichas:normF,sessions:normS,vinculos:x=>x,academias:x=>x,pubs:x=>x};
+const NORM={perfis:normP,fichas:normF,sessions:normS,vinculos:x=>x,academias:x=>x,pubs:x=>x,denuncias:x=>x};
 
 /* ================= Estado ================= */
-const S={perfis:[],fichas:[],sessions:[],personais:[],vinculos:[],academias:[],pubs:[],pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
+const S={perfis:[],fichas:[],sessions:[],personais:[],vinculos:[],academias:[],pubs:[],denuncias:[],modo:LS.get('ft4.modo','personal'),pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
  sel:null,sub:'fichas',edit:null,back:'fichas',form:null,conf:null,newF:null,confirmEnd:false,confirmDel:null,
  chartEx:LS.get('ft.chartEx',''),evoF:'ativa',fb:null,fbv:null,cloud:false,ready:false,imp:null,vid:null,
  active:LS.get('ft4.active',null)};
@@ -123,19 +123,20 @@ async function onAuth(u){
   unsubs.push(C('personais').onSnapshot(sn=>{S.personais=sn.docs.map(d=>({...d.data(),id:d.id}));soft()},e=>console.warn(e)))}
  else if(S.p){listen('me','perfis',C('perfis').doc(uid));listen('meus','perfis',C('perfis').where('personalId','==',uid));
   listen('fichasP','fichas',C('fichas').where('personalId','==',uid));listen('globais','fichas',C('fichas').where('global','==',true));
-  listen('sessP','sessions',C('sessions').where('personalId','==',uid))}
+  listen('sessP','sessions',C('sessions').where('personalId','==',uid));
+  listen('fichasMe','fichas',C('fichas').where('alunoId','==',uid));listen('sessMe','sessions',C('sessions').where('alunoId','==',uid))}
  else{listen('me','perfis',C('perfis').doc(uid));listen('fichasMe','fichas',C('fichas').where('alunoId','==',uid));
   listen('globais','fichas',C('fichas').where('global','==',true));listen('sessMe','sessions',C('sessions').where('alunoId','==',uid))}
  const em=(u.email||'').toLowerCase();
- if(S.g){listen('vincG','vinculos',C('vinculos'));listen('acadG','academias',C('academias'))}
+ if(S.g){listen('vincG','vinculos',C('vinculos'));listen('acadG','academias',C('academias'));listen('denG','denuncias',C('denuncias'))}
  else{listen('acadOk','academias',C('academias').where('aprovada','==',true));listen('pubs','pubs',C('personais').where('publico','==',true));
   if(S.p){listen('vincP','vinculos',C('vinculos').where('personalId','==',uid));listen('acadMinhas','academias',C('academias').where('sugeridaPor','==',uid))}}
- if(!S.p||S.g){listen('vincA','vinculos',C('vinculos').where('alunoId','==',uid));if(u.emailVerified&&em)listen('vincE','vinculos',C('vinculos').where('alunoEmail','==',em))}
+ if(!S.g){listen('vincA','vinculos',C('vinculos').where('alunoId','==',uid));if(u.emailVerified&&em)listen('vincE','vinculos',C('vinculos').where('alunoEmail','==',em))}
  if(!S.g)unsubs.push(C('personais').doc(uid).onSnapshot(d=>{S.pdoc=d.exists?d.data():null;if(S.ready&&d.exists!==S.p)onAuth(fbAuth.currentUser);else soft()},()=>{}));
- S.view=S.p&&!S.g?'alunos':(myActive()?'treino':'inicio');
+ S.view=PM()?'alunos':(myActive()?'treino':'inicio');
 }
 let modP={pid:null,un:null};
-function syncModP(){if(S.g||S.p)return;const pid=ME()?.personalId||'';if(pid===modP.pid)return;
+function syncModP(){if(S.g)return;const pid=ME()?.personalId||'';if(pid===modP.pid)return;
  if(modP.un)modP.un();delete SRC.modelosP;modP={pid,un:null};
  if(pid)modP.un=fdb.collection('fichas').where('modelo','==',true).where('personalId','==',pid).onSnapshot(sn=>{SRC.modelosP={c:'fichas',docs:sn.docs.map(d=>NORM.fichas({...d.data(),id:d.id}))};merge('fichas');soft()},e=>console.warn(e));
  else merge('fichas')}
@@ -173,8 +174,9 @@ function nomeP(pid){if(!pid)return '';const x=S.personais?.find(y=>y.id===pid);i
 const perfil=id=>S.perfis.find(p=>p.id===id);
 const ME=()=>perfil(S.me);
 const isPT=()=>S.p||S.g;
+const PM=()=>S.p&&S.modo!=='aluno';
 const canEdit=f=>!f.modelo||S.g||(!f.global&&f.personalId===S.me);
-const alunos=(todos)=>S.perfis.filter(p=>p.papel==='aluno'&&(todos||p.ativo!==false)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+const alunos=(todos)=>S.perfis.filter(p=>(p.papel==='aluno'||!!p.personalId)&&!(PM()&&p.id===S.me)&&(todos||p.ativo!==false)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
 const ficha=id=>S.fichas.find(f=>f.id===id);
 const fichasDe=o=>o==='modelos'?S.fichas.filter(f=>f.modelo):S.fichas.filter(f=>f.alunoId===o&&!f.modelo);
 const sessDe=aid=>S.sessions.filter(s=>s.alunoId===aid);
@@ -229,8 +231,8 @@ const IC={
  gestao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
-function tabs(){const list=S.p&&!S.g?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']].concat(S.g?[['gestao','Gestão']]:[]);
- const home=S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:''};const cur=S.view in map?map[S.view]:S.view;
+function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']]).concat(S.g?[['gestao','Gestão']]:[]);
+ const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:''};const cur=S.view in map?map[S.view]:S.view;
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
 function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
@@ -308,7 +310,7 @@ function fichasList(owner){
   <div class="field"><label class="lbl" for="nf-nome">Nome</label><input id="nf-nome" class="txt" data-nf="nome" value="${esc(S.newF.nome)}" placeholder="Ex.: Ciclo 2 – hipertrofia"></div>
   <div class="field"><label class="lbl" for="nf-base">Começar com</label><select id="nf-base" data-nf="base"><option value="">Ficha vazia (3 treinos: A, B e C)</option>${opts.filter(o=>o[1].length).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(f=>`<option value="${f.id}" ${S.newF.base===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button>`;
- if(isM&&S.p&&!S.g)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
+ if(isM&&S.p)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
  const card=f=>{const on=at&&at.id===f.id;const n=S.sessions.filter(s=>s.fichaId===f.id).length;return `<section class="panel" style="gap:10px">
   <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}`):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${f.treinos.map((t,i)=>letter(LETRAS[i],'s')).join('')}</div>
@@ -515,7 +517,7 @@ function viewAluno(){
   <div class="small muted">E-mail de acesso: <b style="color:var(--ink)">${esc(p.email||'—')}</b></div>
   ${S.g?`<div class="field"><label class="lbl" for="tr-sel">Personal responsável</label><select id="tr-sel" data-ch="transf"><option value="">Sem Personal</option>${S.personais.filter(x=>x.id!==p.id).map(x=>`<option value="${x.id}" ${p.personalId===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select><div class="small muted">Ao trocar, fichas, treinos e histórico vão junto para o novo Personal.</div></div>`:`<div class="small muted">Personal responsável: <b style="color:var(--ink)">${esc(nomeP(p.personalId)||'—')}</b></div>`}
   ${p.email?`<button class="btn ghost" data-act="rpin">Enviar link para redefinir a senha</button>`:''}${S.cadMsg?`<div class="note good">${esc(S.cadMsg)}</div>`:''}
-  ${S.p&&!S.g&&p.personalId===S.me?(C==='enc'?`<div class="miniconf"><span class="grow">Encerrar o acompanhamento de ${esc(p.nome)}? Você deixa de ver os dados dele.</span><button class="btn sm danger" data-act="penc">Encerrar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn danger" data-act="conf" data-v="enc">Encerrar acompanhamento</button>`):''}
+  ${S.p&&p.personalId===S.me?(C==='enc'?`<div class="miniconf"><span class="grow">Encerrar o acompanhamento de ${esc(p.nome)}? Você deixa de ver os dados dele.</span><button class="btn sm danger" data-act="penc">Encerrar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn danger" data-act="conf" data-v="enc">Encerrar acompanhamento</button>`):''}
   ${S.g?`<button class="btn ${p.ativo===false?'primary':'danger'}" data-act="pativo">`:'<span hidden>'}${p.ativo===false?'Reativar aluno':'Desativar aluno'}${S.g?'</button>':'</span>'}
   ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>${importBox(p.id)}`}
  const al=alertas(p.id);
@@ -526,14 +528,14 @@ function render0(){
  if(!S.me)return S.ready?viewLogin():viewSplash();
  if(!S.ready)return viewSplash();
  if(ME()&&!ME().aceite)return viewTermos();
- if(S.view==='login')S.view=S.p&&!S.g?'alunos':'inicio';
+ if(S.view==='login')S.view=PM()?'alunos':'inicio';
  if(S.view==='treino'&&!myActive())S.view='inicio';
  const v=S.view;
  if(v==='perfil')return viewPerfil();
  if(v==='busca')return viewBusca();
  if(v==='aluno'&&isPT())return viewAluno();
  if(v==='ficha')return viewFicha();
- if(S.p&&!S.g){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));S.view='alunos';return viewAlunos()}
+ if(PM()){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));if(S.g&&v==='gestao')return viewGestao();S.view='alunos';return viewAlunos()}
  if(S.g&&v==='gestao')return viewGestao();
  if(v==='treino')return viewTreino();
  if(v==='fichas')return page(`${fichasDe(S.me).length} fichas`,'Fichas',fichasList(S.me));

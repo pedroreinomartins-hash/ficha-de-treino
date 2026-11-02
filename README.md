@@ -52,7 +52,8 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 ### 5. Personais, alunos e vínculo
 
-- **Liberar um Personal:** a pessoa entra no app uma vez. O gestor abre **Gestão → Personais**, escolhe o usuário e toca em **Liberar como Personal**. O app gera o código de convite (ex.: `RAFA27`).
+- **Tornar-se Personal:** o próprio usuário toca em **Meu perfil → Sou Personal**, informa cidade e, se quiser, o CREF, e assina a declaração de habilitação. O app gera o código de convite (ex.: `RAFA27`). Quem é Personal alterna entre **Modo Personal** e **Modo aluno** em Meu perfil. O gestor ainda pode liberar alguém manualmente e revogar acessos em **Gestão → Personais**.
+- **Denúncias:** na busca, qualquer aluno pode denunciar um perfil; as denúncias aparecem em **Gestão → Personais**.
 - **Vínculo sempre com aceite:**
   - o **aluno solicita** pela busca ou pelo código do Personal, e o Personal aceita ou recusa no painel;
   - o **Personal convida** por e-mail ou cadastrando o aluno, e o aluno aceita ou recusa em **Meu perfil**, marcando a autorização de acesso aos dados (consentimento registrado com data e texto, conforme a LGPD).
@@ -64,7 +65,7 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 - O Personal preenche **Meu perfil → Perfil público** (apresentação, especialidades, cidade, bairros, academias, modalidade, preço, contato e CREF opcional) e marca **Aparecer na busca**.
 - Com CREF informado, o perfil ganha o selo **CREF**. O gestor pode marcar o CREF como **conferido** (selo verde).
-- Academias: o Personal sugere (com preenchimento pelo CEP) e o gestor aprova em **Gestão → Academias**.
+- Academias: o gestor importa do OpenStreetMap por cidade em **Gestão → Academias** (com revisão e sem duplicar as já cadastradas); o Personal também pode sugerir (com preenchimento pelo CEP) e o gestor aprova. Dados do OpenStreetMap: © contribuidores do OpenStreetMap, licença ODbL.
 - O aluno usa **Encontrar um Personal**, com filtros por cidade, bairro, academia, especialidade e modalidade. **Alunos nunca aparecem em buscas.**
 
 ### Termos e privacidade
