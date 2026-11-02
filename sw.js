@@ -1,5 +1,5 @@
 /* Service worker: permite instalar o app e abrir sem internet (os dados sincronizam depois). */
-const CACHE='ficha-v1';
+const CACHE='ficha-v2';
 const ARQ=['./','index.html','js/app.js','js/config.js','js/exercicios.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ARQ)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
