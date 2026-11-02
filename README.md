@@ -74,6 +74,19 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 - **Modelos básicos do app**, disponíveis para todos em *Nova ficha → Começar com*: Full Body básico, Full Body A/B, Superior e Inferior, ABC clássico (peito/ombros/tríceps · dorsal/bíceps · pernas) e Iniciante 2x. Descanso sugerido de 60 s nos compostos e 45 s nos isoladores.
 - **Tempos em minutos:** descanso e tempo de exercício são digitados em min:seg (1:00 = 1 minuto; 0:45 = 45 segundos; 2 = 2 minutos).
 
+### Corrida
+
+- **Treino de corrida na ficha** (*+ Treino de corrida* no editor), montado em blocos: aquecimento, corrida contínua, intervalado (tiros com recuperação) e desaquecimento, por tempo ou distância, com ritmo opcional.
+- **Execução guiada por voz**: anúncio de cada etapa, aviso de 10 segundos, contagem dos 3 últimos segundos e avanço automático. Sem GPS, blocos por distância usam o ritmo para estimar o tempo; sem ritmo, o avanço é manual (botão ou fone).
+- **Registro da corrida**: distância, tempo, ritmo calculado, FC média, esforço, dor no joelho, tênis e observação. Também há *Registrar corrida avulsa* no Início.
+- **Arquivo do relógio**: GPX, TCX ou FIT exportado do Garmin, Polar, Coros, Suunto, Amazfit/Zepp, Strava etc. preenche distância, tempo, data e FC.
+- **Evolução**: km por semana, ritmo por corrida, maior distância e alerta quando o volume semanal sobe mais de 10%. **Tênis**: km acumulados e aviso a partir de 600 km.
+
+### Sons e modo segundo plano
+
+- Estilos por modalidade em *Meu perfil → Sons e alertas*: sino suave (padrão da musculação), voz (padrão da corrida), apito ou só vibração; contagem dos 3 últimos segundos e aviso de metade do tempo.
+- Durante o treino o app mantém uma sessão de áudio e aparece como player na tela de bloqueio, para continuar avisando com a tela apagada. Em economia de bateria, o sistema ainda pode pausar o navegador.
+
 ### Ficha com IA
 
 Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Modelos):
