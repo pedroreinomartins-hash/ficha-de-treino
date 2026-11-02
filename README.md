@@ -68,6 +68,12 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 - Academias: o gestor importa do OpenStreetMap por cidade em **Gestão → Academias** (com revisão e sem duplicar as já cadastradas); o Personal também pode sugerir (com preenchimento pelo CEP) e o gestor aprova. Dados do OpenStreetMap: © contribuidores do OpenStreetMap, licença ODbL.
 - O aluno usa **Encontrar um Personal**, com filtros por cidade, bairro, academia, especialidade e modalidade. **Alunos nunca aparecem em buscas.**
 
+### Fichas, metas e modelos básicos
+
+- **Meta semanal editável** (1 a 7 treinos por semana) em cada ficha. Os treinos se alternam em sequência (A, B, A…), sem depender do dia da semana: uma ficha A/B pode ser feita todos os dias.
+- **Modelos básicos do app**, disponíveis para todos em *Nova ficha → Começar com*: Full Body básico, Full Body A/B, Superior e Inferior, ABC clássico (peito/ombros/tríceps · dorsal/bíceps · pernas) e Iniciante 2x. Descanso sugerido de 60 s nos compostos e 45 s nos isoladores.
+- **Tempos em minutos:** descanso e tempo de exercício são digitados em min:seg (1:00 = 1 minuto; 0:45 = 45 segundos; 2 = 2 minutos).
+
 ### Ficha com IA
 
 Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Modelos):
