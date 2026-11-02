@@ -92,7 +92,7 @@ function normS(s){s.letra=s.letra||s.treino||'A';s.fichaId=s.fichaId||'f-tendini
 const NORM={perfis:normP,fichas:normF,sessions:normS};
 
 /* ================= Estado ================= */
-const S={perfis:[],fichas:[],sessions:[],me:null,pt:false,view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
+const S={perfis:[],fichas:[],sessions:[],personais:[],pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
  sel:null,sub:'fichas',edit:null,back:'fichas',form:null,conf:null,newF:null,confirmEnd:false,confirmDel:null,
  chartEx:LS.get('ft.chartEx',''),evoF:'ativa',fb:null,fbv:null,cloud:false,ready:false,imp:null,vid:null,
  active:LS.get('ft4.active',null)};
@@ -110,43 +110,76 @@ function initFirebase(){
  fbAuth.onAuthStateChanged(onAuth);
 }
 async function onAuth(u){
- unsubs.forEach(f=>f());unsubs=[];for(const k in SRC)delete SRC[k];S.perfis=[];S.fichas=[];S.sessions=[];
- if(!u){S.me=null;S.pt=false;S.ready=true;S.view='login';render();return}
+ unsubs.forEach(f=>f());unsubs=[];if(modP.un)modP.un();modP={pid:null,un:null};for(const k in SRC)delete SRC[k];S.perfis=[];S.fichas=[];S.sessions=[];S.personais=[];
+ if(!u){S.me=null;S.g=false;S.p=false;S.ready=true;S.view='login';render();return}
  S.me=u.uid;S.ready=false;render();
- try{const a=await fdb.collection('admins').doc(u.uid).get();S.pt=a.exists}catch(e){S.pt=false}
- try{const ref=fdb.collection('perfis').doc(u.uid),ps=await ref.get();
-  if(!ps.exists)await ref.set({id:u.uid,nome:(S.auth.nome||'').trim()||u.displayName||u.email.split('@')[0],email:u.email,papel:S.pt?'personal':'aluno',ativo:true,ativa:null,criado:Date.now()});
-  else if(S.pt&&ps.data().papel!=='personal')await ref.update({papel:'personal'});
- }catch(e){console.warn(e)}
  const uid=u.uid,C=c=>fdb.collection(c);
- if(S.pt){listen('perfis','perfis',C('perfis'));listen('fichas','fichas',C('fichas'));listen('sessions','sessions',C('sessions'))}
+ try{S.g=(await C('gestores').doc(uid).get()).exists}catch(e){S.g=false}
+ try{S.p=(await C('personais').doc(uid).get()).exists}catch(e){S.p=false}
+ try{const ref=C('perfis').doc(uid),ps=await ref.get();
+  if(!ps.exists)await ref.set({id:uid,nome:(S.auth.nome||'').trim()||u.displayName||u.email.split('@')[0],email:u.email,papel:'aluno',personalId:'',ativo:true,ativa:null,criado:Date.now()});
+ }catch(e){console.warn(e)}
+ if(S.g){listen('perfis','perfis',C('perfis'));listen('fichas','fichas',C('fichas'));listen('sessions','sessions',C('sessions'));
+  unsubs.push(C('personais').onSnapshot(sn=>{S.personais=sn.docs.map(d=>({...d.data(),id:d.id}));soft()},e=>console.warn(e)))}
+ else if(S.p){listen('me','perfis',C('perfis').doc(uid));listen('meus','perfis',C('perfis').where('personalId','==',uid));
+  listen('fichasP','fichas',C('fichas').where('personalId','==',uid));listen('globais','fichas',C('fichas').where('global','==',true));
+  listen('sessP','sessions',C('sessions').where('personalId','==',uid))}
  else{listen('me','perfis',C('perfis').doc(uid));listen('fichasMe','fichas',C('fichas').where('alunoId','==',uid));
-  listen('modelos','fichas',C('fichas').where('modelo','==',true));listen('sessMe','sessions',C('sessions').where('alunoId','==',uid))}
- S.view=S.pt?'alunos':(myActive()?'treino':'inicio');
+  listen('globais','fichas',C('fichas').where('global','==',true));listen('sessMe','sessions',C('sessions').where('alunoId','==',uid))}
+ if(!S.g)unsubs.push(C('personais').doc(uid).onSnapshot(d=>{S.pdoc=d.exists?d.data():null;if(S.ready&&d.exists!==S.p)onAuth(fbAuth.currentUser);else soft()},()=>{}));
+ S.view=S.p&&!S.g?'alunos':(myActive()?'treino':'inicio');
 }
+let modP={pid:null,un:null};
+function syncModP(){if(S.g||S.p)return;const pid=ME()?.personalId||'';if(pid===modP.pid)return;
+ if(modP.un)modP.un();delete SRC.modelosP;modP={pid,un:null};
+ if(pid)modP.un=fdb.collection('fichas').where('modelo','==',true).where('personalId','==',pid).onSnapshot(sn=>{SRC.modelosP={c:'fichas',docs:sn.docs.map(d=>NORM.fichas({...d.data(),id:d.id}))};merge('fichas');soft()},e=>console.warn(e));
+ else merge('fichas')}
+function merge(c){const m=new Map();Object.values(SRC).filter(x=>x.c===c).forEach(x=>x.docs.forEach(d=>m.set(d.id,d)));S[c]=[...m.values()];if(c==='sessions')sortS()}
 function listen(key,c,ref){unsubs.push(ref.onSnapshot(sn=>{
   const docs=sn.docs?sn.docs.filter(d=>d.exists!==false):(sn.exists?[sn]:[]);
-  SRC[key]={c,docs:docs.map(d=>NORM[c]({...d.data(),id:d.id}))};S.cloud=!sn.metadata.fromCache;
-  const m=new Map();Object.values(SRC).filter(s=>s.c===c).forEach(s=>s.docs.forEach(d=>m.set(d.id,d)));
-  S[c]=[...m.values()];if(c==='sessions')sortS();
-  if(!S.ready&&SRC[S.pt?'perfis':'me']){S.ready=true;render()}else soft();
+  SRC[key]={c,docs:docs.map(d=>NORM[c]({...d.data(),id:d.id}))};S.cloud=!sn.metadata.fromCache;merge(c);
+  if(key==='me')syncModP();
+  if(!S.ready&&SRC[S.g?'perfis':'me']){S.ready=true;render()}else soft();
  },e=>{console.warn(key,e);if(!S.ready){S.ready=true;render()}}))}
-function put(c,o){const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);if(c==='sessions')sortS();
+function stamp(c,o){
+ if(c==='fichas'){if(o.modelo){if(o.global)o.personalId='';else if(!o.personalId)o.personalId=S.me}else o.personalId=perfil(o.alunoId)?.personalId||''}
+ if(c==='sessions')o.personalId=perfil(o.alunoId)?.personalId||''}
+function put(c,o){stamp(c,o);const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);if(c==='sessions')sortS();
  if(fdb)fdb.collection(c).doc(o.id).set(clone(o)).catch(e=>{console.warn(e);toast('Não foi possível salvar. Verifique a conexão e tente de novo.')})}
 function del(c,id){S[c]=S[c].filter(x=>x.id!==id);if(fdb)fdb.collection(c).doc(id).delete().catch(e=>console.warn(e))}
 function soft(){if(S.view==='treino'||document.activeElement?.matches?.('#app input,#app textarea,#app select'))return;render()}
 function toast(t){let el=$('#toast');if(!el){el=document.createElement('div');el.id='toast';document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3500)}
 const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password':'Informe a senha.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/email-already-in-use':'Este e-mail já tem cadastro. Use "Entrar".','auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão com a internet.','auth/operation-not-allowed':'Esse tipo de login não está ativado no Firebase.','auth/unauthorized-domain':'Este endereço não está autorizado no Firebase (Authentication → Settings → Domínios autorizados).','auth/account-exists-with-different-credential':'Este e-mail já tem cadastro com senha. Entre com e-mail e senha.'};
 const authMsg=e=>AUTH_ERR[e?.code]||('Não foi possível concluir: '+(e?.message||e));
+async function putNow(c,o){stamp(c,o);const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);await fdb.collection(c).doc(o.id).set(clone(o))}
+function restamp(aid){fichasDe(aid).forEach(f=>put('fichas',f));sessDe(aid).forEach(x=>put('sessions',x))}
+async function vincular(code){code=String(code||'').trim().toUpperCase();if(!code)throw new Error('Informe o código do seu Personal.');
+ let c;try{c=await fdb.collection('convites').doc(code).get()}catch(e){throw new Error('Não foi possível verificar o código. Confira a conexão.')}
+ if(!c.exists)throw new Error('Código não encontrado. Confira com o seu Personal.');
+ const pid=c.data().personalId;if(pid===S.me)throw new Error('Este é o seu próprio código de Personal.');
+ const p=ME();p.personalId=pid;p.convite=code;await putNow('perfis',p);restamp(S.me);return pid}
+async function desvincular(){const p=ME();p.personalId='';p.convite='';await putNow('perfis',p);restamp(S.me)}
+function transferir(aid,pid){const p=perfil(aid);if(!p)return;p.personalId=pid;p.convite='';put('perfis',p);restamp(aid)}
+function novoCodigo(nome){const base=nk(nome).replace(/[^a-z]/g,'').toUpperCase().slice(0,4).padEnd(3,'X');const usados=new Set(S.personais.map(x=>x.codigo));
+ for(let i=0;i<200;i++){const c=base+String(10+Math.floor(Math.random()*90));if(!usados.has(c))return c}return base+Date.now().toString(36).slice(-3).toUpperCase()}
+async function liberarPersonal(uid){const p=perfil(uid);const codigo=novoCodigo(p.nome);const b=fdb.batch();
+ b.set(fdb.collection('personais').doc(uid),{nome:p.nome,codigo,criado:Date.now()});b.set(fdb.collection('convites').doc(codigo),{personalId:uid});
+ b.update(fdb.collection('perfis').doc(uid),{papel:'personal'});await b.commit();return codigo}
+async function revogarPersonal(uid){const x=S.personais.find(y=>y.id===uid);const b=fdb.batch();b.delete(fdb.collection('personais').doc(uid));
+ if(x?.codigo)b.delete(fdb.collection('convites').doc(x.codigo));b.update(fdb.collection('perfis').doc(uid),{papel:'aluno'});await b.commit()}
+const pnCache={};
+function nomeP(pid){if(!pid)return '';const x=S.personais?.find(y=>y.id===pid);if(x)return x.nome;if(pid===S.me)return ME()?.nome||'';
+ if(pnCache[pid]===undefined){pnCache[pid]='';fdb.collection('personais').doc(pid).get().then(d=>{pnCache[pid]=d.exists?d.data().nome:'';soft()}).catch(()=>{})}return pnCache[pid]||'seu Personal'}
 async function criarAlunoPeloPersonal(nome,email,senha){
  const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(CFG,'cadastro');
  const cred=await app2.auth().createUserWithEmailAndPassword(email,senha);const uid=cred.user.uid;await app2.auth().signOut();
- const p={id:uid,nome,email,papel:'aluno',ativo:true,ativa:null,criado:Date.now()};put('perfis',p);return p}
+ const p={id:uid,nome,email,papel:'aluno',personalId:S.p?S.me:'',ativo:true,ativa:null,criado:Date.now()};put('perfis',p);return p}
 
 /* ================= Consultas ================= */
 const perfil=id=>S.perfis.find(p=>p.id===id);
 const ME=()=>perfil(S.me);
-const isPT=()=>S.pt;
+const isPT=()=>S.p||S.g;
+const canEdit=f=>!f.modelo||S.g||(!f.global&&f.personalId===S.me);
 const alunos=(todos)=>S.perfis.filter(p=>p.papel==='aluno'&&(todos||p.ativo!==false)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
 const ficha=id=>S.fichas.find(f=>f.id===id);
 const fichasDe=o=>o==='modelos'?S.fichas.filter(f=>f.modelo):S.fichas.filter(f=>f.alunoId===o&&!f.modelo);
@@ -199,13 +232,14 @@ const IC={
  evolucao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>',
  historico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
  alunos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>',
+ gestao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
-function tabs(){const list=isPT()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']];
- const map={ficha:S.back,aluno:'alunos'};const cur=map[S.view]||S.view;
- return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k||(cur==='aluno'&&k==='alunos')?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
+function tabs(){const list=S.p&&!S.g?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']].concat(S.g?[['gestao','Gestão']]:[]);
+ const home=S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:''};const cur=S.view in map?map[S.view]:S.view;
+ return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
-function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:S.pt?'personal':'aluno'};return `<button class="me" data-act="logout" aria-label="Sair da conta">${avatar(p,'s')}<span>${esc(p.nome)} · Sair</span></button>`}
+function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
 function activeBanner(){const a=myActive();if(!a)return '';return `<button class="banner" data-act="tab" data-v="treino"><span class="letter s" style="background:rgba(255,255,255,.22)">${esc(a.letra)}</span><span class="grow"><b>Treino em andamento</b><br><span class="small">Toque para voltar à sessão</span></span><span class="num" id="elapsed" style="font-size:22px"></span></button>`}
 function page(eyebrow,title,body,{back}={}){return `<main class="wrap"><header class="top"><div style="min-width:0">${back?`<button class="btn sm ghost" data-act="tab" data-v="${back}" style="margin-bottom:8px">‹ Voltar</button>`:''}<div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><div class="topR">${meChip()}${syncTag()}</div></header>${activeBanner()}${body}</main>${tabs()}`}
 
@@ -254,7 +288,7 @@ function viewInicio(){
   check=`<section class="panel"><div class="eyebrow">Joelho · resposta em 24 h</div><h2>Como o joelho ficou depois do treino ${esc(last.letra)} de ${dataLonga(last.inicio)}?</h2><div class="choices">${[['melhor','Melhor'],['igual','Igual'],['pior','Pior']].map(([k,l])=>`<button class="btn ghost" data-act="dor24" data-v="${k}">${l}</button>`).join('')}</div></section>`;
  const recent=ss.slice(0,4).map(itemRow).join('');
  const recentP=`<section class="panel"><div class="eyebrow">Últimos treinos</div>${recent?`<div class="list">${recent}</div>`:`<div class="empty">Seus treinos concluídos aparecem aqui, com duração e carga de cada exercício.</div>`}</section>`;
- if(!f)return page('Olá, '+esc(ME().nome),'Ficha de Treino',`${fbPanel()}<div class="empty">Você ainda não tem uma ficha ativa. O Personal pode montar uma para você, ou você mesmo pode criar.<br><br><button class="btn primary" data-act="tab" data-v="fichas">Abrir fichas</button></div>${recentP}`);
+ if(!f)return page('Olá, '+esc(ME().nome),'Ficha de Treino',`${fbPanel()}${semPersonal()}<div class="empty">Você ainda não tem uma ficha ativa. O Personal pode montar uma para você, ou você mesmo pode criar.<br><br><button class="btn primary" data-act="tab" data-v="fichas">Abrir fichas</button></div>${recentP}`);
  const ni=nextIdx0(f),nt=f.treinos[ni],meta=f.treinos.length,wk=weekCount(ws,aid),pw=programWeek(f);
  const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((d,i)=>{const t0=ws+i*DAY;const s=ss.find(x=>x.inicio>=t0&&x.inicio<t0+DAY);const today=now>=t0&&now<t0+DAY;return `<div class="day"><div class="dot ${s?'f':''} ${today&&!s?'today':''}" ${s?`style="background:${lcol(s.letra)}"`:''}>${s?esc(s.letra):''}</div>${d}</div>`}).join('');
  const lastNote=last?.dor24==='pior'&&now-last.fim<7*DAY?`<div class="note bad">Na última avaliação, o joelho piorou nas 24 h seguintes. Reduza a carga ou o volume dos exercícios de perna nesta sessão.</div>`:'';
@@ -264,28 +298,30 @@ function viewInicio(){
   ${nt.ex.length?`<button class="btn primary big" data-act="start" data-f="${f.id}" data-v="${nt.id}">Começar treino ${LETRAS[ni]}</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os na aba Fichas.</div>`}
   <div class="alt">${f.treinos.map((t,i)=>`<button data-act="start" data-f="${f.id}" data-v="${t.id}" ${t.ex.length?'':'disabled'}><b>${LETRAS[i]}</b><span>${esc(t.nome)}</span></button>`).join('')}</div>
  </section>`:`<div class="empty">A ficha ativa não tem treinos. <button class="btn sm primary" data-act="open" data-v="${f.id}">Editar ficha</button></div>`;
- return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${myActive()?'':start}${check}
+ return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${semPersonal()}${myActive()?'':start}${check}
  <section class="panel">
   <div class="row"><div class="grow"><div class="eyebrow">Esta semana</div><h2><span class="num">${wk}</span> de ${meta} treinos</h2></div><div class="small muted" style="text-align:right">Semana <b class="num" style="font-size:20px;color:var(--ink)">${pw}</b> de ${f.semanas||8}<br>do ciclo</div></div>
   <div class="week">${days}</div>
  </section>${recentP}`)}
+function semPersonal(){if(S.p||ME()?.personalId||LS.get('ft4.semP',0))return '';return `<section class="panel" style="gap:8px"><div class="eyebrow">Tem um Personal?</div><div class="small">Informe o código de convite dele para que ele acompanhe seus treinos e monte suas fichas.</div><div class="nav2"><button class="btn ghost" data-act="semPno">Agora não</button><button class="btn primary" data-act="tab" data-v="perfil">Informar código</button></div></section>`}
 function itemRow(s){const n=Object.values(s.ex||{}).reduce((a,r)=>a+r.sets.length,0);return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.treinoNome||'')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${Math.round(s.dur/60)} min</b><div class="small muted">${n} séries</div></div></div>`}
 
 /* ================= Lista de fichas (aluno, aluno visto pelo Personal, modelos) ================= */
 function fichasList(owner){
  const isM=owner==='modelos';const lista=fichasDe(owner).sort((a,b)=>(b.criada||0)-(a.criada||0));const at=isM?null:ativaDe(owner);
- const opts=[];if(!isM)opts.push(['Modelos do Personal',fichasDe('modelos')]);opts.push([isM?'Modelos':'Fichas deste aluno',lista]);
+ const opts=[];if(!isM)opts.push(['Modelos disponíveis',fichasDe('modelos')]);opts.push([isM?'Modelos':'Fichas deste aluno',lista]);
  if(isPT())alunos(true).filter(p=>p.id!==owner).forEach(p=>{const l=fichasDe(p.id);if(l.length)opts.push(['Fichas de '+p.nome,l])});
  const nf=S.newF&&S.newF.owner===owner?`<section class="form"><h3>${isM?'Novo modelo':'Nova ficha'}</h3>
   <div class="field"><label class="lbl" for="nf-nome">Nome</label><input id="nf-nome" class="txt" data-nf="nome" value="${esc(S.newF.nome)}" placeholder="Ex.: Ciclo 2 – hipertrofia"></div>
   <div class="field"><label class="lbl" for="nf-base">Começar com</label><select id="nf-base" data-nf="base"><option value="">Ficha vazia (3 treinos: A, B e C)</option>${opts.filter(o=>o[1].length).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(f=>`<option value="${f.id}" ${S.newF.base===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button>`;
+ if(isM&&S.p&&!S.g)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
  const card=f=>{const on=at&&at.id===f.id;const n=S.sessions.filter(s=>s.fichaId===f.id).length;return `<section class="panel" style="gap:10px">
-  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
+  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}`):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${f.treinos.map((t,i)=>letter(LETRAS[i],'s')).join('')}</div>
-  <div class="nav2"><button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
+  <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
  const ativas=lista.filter(f=>!f.arquivada),arq=lista.filter(f=>f.arquivada);
- const seed=isM&&!fichasDe('modelos').some(f=>f.id==='m-condro')?`<button class="btn dash" data-act="seedm">+ Carregar os 2 modelos iniciais (condropatia e tendinite)</button>`:'';
+ const seed=isM&&!fichasDe('modelos').some(f=>f.tpl==='condro'&&(S.g?f.global:f.personalId===S.me))?`<button class="btn dash" data-act="seedm">+ Carregar os 2 modelos iniciais (condropatia e tendinite)</button>`:'';
  return `${nf}${seed}${ativas.map(card).join('')||(S.newF?'':`<div class="empty">${isM?'Nenhum modelo ainda. Modelos servem de base para montar fichas dos alunos.':'Nenhuma ficha ainda.'}</div>`)}${arq.length?`<div class="eyebrow" style="margin-top:6px">Arquivadas</div>${arq.map(card).join('')}`:''}${isM?'':importBox(owner)}`}
 function importBox(aid){const I=S.imp;
  if(!I||I.aid!==aid)return `<button class="btn sm ghost" style="align-self:center" data-act="impopen" data-v="${aid}">Importar dados do app de teste</button>`;
@@ -453,8 +489,11 @@ function historico(aid){
  return `<section class="panel" style="gap:0">${list||'<div class="empty">Nenhum treino salvo ainda.</div>'}</section>`}
 
 /* ================= Personal ================= */
-function viewAlunos(){
- const ws=weekStart(Date.now()),al=alunos(),inat=alunos(true).filter(p=>p.ativo===false);
+function viewAlunos(){return page('Painel do Personal','Alunos',codigoCard()+alunosBody())}
+function codigoCard(){const c=S.pdoc?.codigo;if(!c)return '';return `<section class="panel" style="gap:6px"><div class="eyebrow">Seu código de convite</div><div class="row"><b class="num grow" style="font-size:34px;letter-spacing:.08em">${esc(c)}</b><button class="btn sm ghost" data-act="copycode" data-v="${esc(c)}">Copiar</button></div><div class="small muted">O aluno informa este código em Meu perfil para entrar na sua carteira.</div></section>`}
+function alunosBody(){
+ const ws=weekStart(Date.now());let al=alunos(),inat=alunos(true).filter(p=>p.ativo===false);
+ if(S.g&&S.gf){const f=x=>S.gf==='-'?!x.personalId:x.personalId===S.gf;al=al.filter(f);inat=inat.filter(f)}
  const tot=al.reduce((a,p)=>a+weekCount(ws,p.id),0),nal=al.reduce((a,p)=>a+alertas(p.id).filter(x=>x.c!=='info').length,0);
  const U=S.newU;
  const nu=U?`<section class="form"><h3>Cadastrar aluno</h3>
@@ -464,12 +503,13 @@ function viewAlunos(){
   ${U.err?`<div class="note bad">${esc(U.err)}</div>`:''}<div class="small muted">Passe o e-mail e a senha ao aluno. Ele pode trocar a senha em “Esqueci minha senha”.</div>
   <div class="nav2"><button class="btn ghost" data-act="nucancel">Cancelar</button><button class="btn primary" data-act="nusave" ${U.busy?'disabled':''}>Cadastrar</button></div></section>`:`<button class="btn primary" data-act="nuopen">+ Cadastrar aluno</button>`;
  const card=p=>{const f=ativaDe(p.id),meta=f?.treinos.length||3,wk=weekCount(ws,p.id),ss=sessDe(p.id),al=alertas(p.id);
-  return `<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p)}<div class="grow"><h2>${esc(p.nome)}</h2><div class="small muted">${f?esc(f.nome):'Sem ficha ativa'}</div></div><div style="text-align:right"><b class="num" style="font-size:24px">${wk}/${meta}</b><div class="small muted">na semana</div></div></div>
+  return `<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p)}<div class="grow"><h2>${esc(p.nome)}</h2><div class="small muted">${f?esc(f.nome):'Sem ficha ativa'}</div>${S.g?`<div class="small muted">${p.personalId?'Personal: '+esc(nomeP(p.personalId)):'Sem Personal'}</div>`:''}</div><div style="text-align:right"><b class="num" style="font-size:24px">${wk}/${meta}</b><div class="small muted">na semana</div></div></div>
   <div class="meter"><i style="width:${Math.min(100,wk/meta*100)}%"></i></div>
   <div class="small muted">${ss.length?`Último treino: ${dataLonga(ss[0].inicio)} · ${ss.length} no total`:'Nenhum treino registrado'}</div>
   ${al.length?`<div class="alerts">${al.slice(0,3).map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}</button>`};
- return page('Painel do Personal','Alunos',`<div class="kpis"><div class="kpi"><b>${al.length}</b><span>alunos ativos</span></div><div class="kpi"><b>${tot}</b><span>treinos na semana</span></div><div class="kpi"><b style="color:${nal?'var(--bad)':'var(--ink)'}">${nal}</b><span>alertas</span></div></div>
- ${nu}${al.map(card).join('')}${inat.length?`<div class="eyebrow">Inativos</div>${inat.map(p=>`<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p,'s')}<b class="grow">${esc(p.nome)}</b><span class="chip">Inativo</span></div></button>`).join('')}`:''}`)}
+ const filtro=S.g?`<select id="gfSel" aria-label="Filtrar por Personal"><option value="">Todos os Personais</option><option value="-" ${S.gf==='-'?'selected':''}>Sem Personal</option>${S.personais.map(x=>`<option value="${x.id}" ${S.gf===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select>`:'';
+ return `${filtro}<div class="kpis"><div class="kpi"><b>${al.length}</b><span>alunos ativos</span></div><div class="kpi"><b>${tot}</b><span>treinos na semana</span></div><div class="kpi"><b style="color:${nal?'var(--bad)':'var(--ink)'}">${nal}</b><span>alertas</span></div></div>
+ ${nu}${al.map(card).join('')}${inat.length?`<div class="eyebrow">Inativos</div>${inat.map(p=>`<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p,'s')}<b class="grow">${esc(p.nome)}</b><span class="chip">Inativo</span></div></button>`).join('')}`:''}`}
 function viewAluno(){
  const p=perfil(S.sel);if(!p){S.view='alunos';return viewAlunos()}
  const sub=S.sub;
@@ -481,21 +521,47 @@ function viewAluno(){
  else{const C=S.conf;body=`<section class="panel">
   <div class="field"><label class="lbl" for="cad-nome">Nome</label><input id="cad-nome" class="txt" data-ch="pnome" value="${esc(p.nome)}"></div>
   <div class="small muted">E-mail de acesso: <b style="color:var(--ink)">${esc(p.email||'—')}</b></div>
+  ${S.g?`<div class="field"><label class="lbl" for="tr-sel">Personal responsável</label><select id="tr-sel" data-ch="transf"><option value="">Sem Personal</option>${S.personais.filter(x=>x.id!==p.id).map(x=>`<option value="${x.id}" ${p.personalId===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select><div class="small muted">Ao trocar, fichas, treinos e histórico vão junto para o novo Personal.</div></div>`:`<div class="small muted">Personal responsável: <b style="color:var(--ink)">${esc(nomeP(p.personalId)||'—')}</b></div>`}
   ${p.email?`<button class="btn ghost" data-act="rpin">Enviar link para redefinir a senha</button>`:''}${S.cadMsg?`<div class="note good">${esc(S.cadMsg)}</div>`:''}
   <button class="btn ${p.ativo===false?'primary':'danger'}" data-act="pativo">${p.ativo===false?'Reativar aluno':'Desativar aluno'}</button>
   <div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos.</div></section>${importBox(p.id)}`}
  const al=alertas(p.id);
- return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:'alunos'})}
+ return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
+function viewGestao(){const g=S.gsub;
+ const st=`<div class="subtabs">${[['alunos','Alunos'],['personais','Personais'],['modelos','Modelos']].map(([k,l])=>`<button data-act="gsub" data-v="${k}" class="${g===k?'on':''}">${l}</button>`).join('')}</div>`;
+ let body;
+ if(g==='modelos')body=`<div class="small muted">Modelos sem Personal ficam disponíveis para todos os Personais e alunos.</div>`+fichasList('modelos');
+ else if(g==='personais'){const C=S.conf;const cand=S.perfis.filter(p=>p.papel!=='personal'&&!S.personais.some(x=>x.id===p.id)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}
+  <section class="form"><h3>Liberar novo Personal</h3><div class="small muted">A pessoa precisa ter entrado no app ao menos uma vez.</div>
+  <select id="lp-sel" aria-label="Usuário"><option value="">Escolha o usuário</option>${cand.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.email?' · '+esc(p.email):''}</option>`).join('')}</select>
+  <button class="btn primary" data-act="lpgo">Liberar como Personal</button></section>
+  ${S.personais.map(x=>{const n=alunos(true).filter(a=>a.personalId===x.id).length;const k='rev:'+x.id;return `<section class="panel" style="gap:8px"><div class="row">${avatar({id:x.id,nome:x.nome,papel:'aluno'})}<div class="grow"><h2>${esc(x.nome)}</h2><div class="small muted">${n} aluno${n===1?'':'s'} · código <b class="num" style="color:var(--ink);font-size:16px">${esc(x.codigo||'')}</b></div></div></div>
+   ${C===k?(n?`<div class="note warn">Transfira os ${n} alunos antes de revogar (aba Alunos → aluno → Cadastro). <button class="btn sm ghost" data-act="conf" data-v="">Ok</button></div>`:`<div class="miniconf"><span class="grow">Revogar o acesso de Personal?</span><button class="btn sm danger" data-act="revgo" data-v="${x.id}">Revogar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`):`<div class="nav2"><button class="btn ghost" data-act="gfgo" data-v="${x.id}">Ver alunos</button><button class="btn danger" data-act="conf" data-v="${k}">Revogar acesso</button></div>`}</section>`}).join('')||'<div class="empty">Nenhum Personal liberado ainda.</div>'}`}
+ else body=alunosBody();
+ return page('Painel do gestor','Gestão',st+body)}
+function viewPerfil(){const p=ME()||{nome:'',email:''};const P=S.pf||{};
+ const vinc=S.p&&!S.g?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>`:`<section class="panel"><div class="eyebrow">Meu Personal</div>
+  ${p.personalId?`<div class="row">${avatar({id:p.personalId,nome:nomeP(p.personalId)||'P',papel:'aluno'},'s')}<b class="grow">${esc(nomeP(p.personalId))}</b></div><div class="small muted">Seu Personal acompanha suas fichas, treinos e evolução.</div>`:'<div class="small muted">Você ainda não está vinculado a um Personal. Peça o código de convite a ele.</div>'}
+  <div class="field"><label class="lbl" for="pf-cod">${p.personalId?'Trocar de Personal (novo código)':'Código de convite'}</label><input id="pf-cod" class="txt" autocapitalize="characters" value="${esc(P.cod||'')}" placeholder="Ex.: RAFA27"></div>
+  ${P.err?`<div class="note bad">${esc(P.err)}</div>`:''}${P.ok?`<div class="note good">${esc(P.ok)}</div>`:''}
+  <button class="btn primary" data-act="pfvinc" ${P.busy?'disabled':''}>Vincular</button>
+  ${p.personalId?(S.conf==='desv'?`<div class="miniconf"><span class="grow">Sair da carteira deste Personal? Ele deixa de ver seus dados.</span><button class="btn sm danger" data-act="pfdesv">Sair</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn sm ghost" data-act="conf" data-v="desv">Desvincular do Personal</button>`):''}</section>`;
+ return page(S.g?'Gestor':S.p?'Personal':'Aluno','Meu perfil',`<section class="panel"><div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div></section>${vinc}<button class="btn danger" data-act="logout">Sair da conta</button>`)}
 
 /* ================= Render ================= */
 function render0(){
  if(!configOK)return viewConfig();
  if(!S.me)return S.ready?viewLogin():viewSplash();
  if(!S.ready)return viewSplash();
- if(S.view==='login')S.view=isPT()?'alunos':'inicio';
+ if(S.view==='login')S.view=S.p&&!S.g?'alunos':'inicio';
  if(S.view==='treino'&&!myActive())S.view='inicio';
- const v=S.view,pt=isPT();
- if(pt){if(v==='aluno')return viewAluno();if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));if(v==='ficha')return viewFicha();S.view='alunos';return viewAlunos()}
+ const v=S.view;
+ if(v==='perfil')return viewPerfil();
+ if(v==='aluno'&&isPT())return viewAluno();
+ if(v==='ficha')return viewFicha();
+ if(S.p&&!S.g){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));S.view='alunos';return viewAlunos()}
+ if(S.g&&v==='gestao')return viewGestao();
  if(v==='treino')return viewTreino();
  if(v==='fichas')return page(`${fichasDe(S.me).length} fichas`,'Fichas',fichasList(S.me));
  if(v==='ficha')return viewFicha();
@@ -505,15 +571,16 @@ function render0(){
 function render(){
  $('#app').innerHTML=render0();tick();
  const sel=$('#exSel');if(sel)sel.onchange=()=>{S.chartEx=sel.value;LS.set('ft.chartEx',sel.value);render()};
+ const gs=$('#gfSel');if(gs)gs.onchange=()=>{S.gf=gs.value;render()};
  const es=$('#evoSel');if(es)es.onchange=()=>{S.evoF=es.value;render()};
  document.querySelectorAll('#app input[data-k]').forEach(inp=>inp.onchange=()=>{const v=parseFloat(inp.value.replace(',','.'));draft(curEx())[inp.dataset.k]=isNaN(v)?0:Math.max(0,v);saveActive()});
  const dl=$('#exlib');if(dl&&S.view==='ficha'){const set=new Set(LIB);S.fichas.forEach(f=>f.treinos.forEach(t=>t.ex.forEach(e=>set.add(e.n))));dl.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'pt')).map(n=>`<option value="${esc(n)}">`).join('')}
 }
-const go=v=>{S.view=v;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
+const go=v=>{S.view=v;S.pf=null;S.gmsg=null;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
 function findEx(f,tid,eid){const t=f.treinos.find(x=>x.id===tid);return {t,i:t?t.ex.findIndex(e=>e.id===eid):-1}}
-function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,arquivada:false,criada:Date.now(),modelo:owner==='modelos',alunoId:owner==='modelos'?null:owner,autor:ME().nome};delete nf._p;delete nf._seed;
+function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,arquivada:false,criada:Date.now(),modelo:owner==='modelos',global:owner==='modelos'&&S.g,alunoId:owner==='modelos'?null:owner,autor:ME().nome,tpl:null};delete nf._p;delete nf._seed;delete nf.personalId;
  nf.treinos=nf.treinos.map(t=>({...t,id:uid('t'),ex:t.ex.map(x=>({...x,id:uid('e')}))}));return nf}
-function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;render();window.scrollTo(0,0)}
+function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='gestao'?'gestao':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;render();window.scrollTo(0,0)}
 function curFicha(){return ficha(S.edit)}
 function saveF(f){put('fichas',f)}
 
@@ -526,6 +593,8 @@ document.addEventListener('change',e=>{const el=e.target,ch=el.dataset.ch;
  if(el.dataset.f&&S.form&&el.type==='checkbox')S.form.d[el.dataset.f]=el.checked;
  if(el.dataset.nf&&S.newF)S.newF[el.dataset.nf]=el.value;
  if(!ch)return;
+ if(ch==='meunome'){const p=ME(),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
+ if(ch==='transf'){transferir(S.sel,el.value);toast('Personal responsável atualizado.');render();return}
  if(ch==='pnome'){const p=perfil(S.sel),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
  const f=curFicha();if(!f)return;
  if(ch==='fnome'){const v=el.value.trim();if(v)f.nome=v}
@@ -546,11 +615,20 @@ document.addEventListener('click',e=>{
   case 'nusave':{const U=S.newU,nome=(U.nome||'').trim(),email=(U.email||'').trim();U.err='';
    if(!nome){U.err='Informe o nome.';render();break}if(!email){U.err='Informe o e-mail do aluno.';render();break}if((U.senha||'').length<6){U.err='A senha provisória precisa ter pelo menos 6 caracteres.';render();break}
    U.busy=true;render();criarAlunoPeloPersonal(nome,email,U.senha).then(p=>{S.newU=null;S.sel=p.id;S.sub='fichas';go('aluno')}).catch(e=>{U.busy=false;U.err=authMsg(e);render()});break}
-  case 'seedm':{const mk=(t,id,nome)=>({...clone(t),id,modelo:true,alunoId:null,arquivada:false,nome,autor:ME()?.nome||'Personal',mig1:1});put('fichas',mk(TPL_CONDRO,'m-condro','Full Body ABC – condropatia patelar'));put('fichas',mk(TPL_TEND,'m-tend','Full Body ABC – tendinite patelar'));render();break}
+  case 'seedm':{const suf=S.g?'':'-'+S.me.slice(0,8);const mk=(t,id,tpl,nome)=>({...clone(t),id:id+suf,tpl,modelo:true,global:S.g,alunoId:null,arquivada:false,nome,autor:ME()?.nome||'Personal',mig1:1});put('fichas',mk(TPL_CONDRO,'m-condro','condro','Full Body ABC – condropatia patelar'));put('fichas',mk(TPL_TEND,'m-tend','tend','Full Body ABC – tendinite patelar'));render();break}
+  case 'copycode':{const t=v;try{navigator.clipboard.writeText(t).then(()=>toast('Código copiado.'),()=>toast('Código: '+t))}catch(e){toast('Código: '+t)}break}
+  case 'gsub':S.gsub=v;S.conf=null;S.gmsg=null;S.newU=null;S.newF=null;render();break;
+  case 'gfgo':S.gf=v;S.gsub='alunos';S.conf=null;render();window.scrollTo(0,0);break;
+  case 'lpgo':{const id=$('#lp-sel')?.value;if(!id){S.gmsg={c:'bad',t:'Escolha o usuário que será Personal.'};render();break}
+   liberarPersonal(id).then(c=>{S.gmsg={c:'good',t:`${perfil(id)?.nome} agora é Personal. Código de convite: ${c}. Peça para ele sair e entrar de novo no app.`};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível liberar: '+(e.message||e)};render()});break}
+  case 'revgo':revogarPersonal(v).then(()=>{S.conf=null;S.gmsg={c:'good',t:'Acesso de Personal revogado.'};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível revogar: '+(e.message||e)};render()});break;
+  case 'pfvinc':{S.pf={cod:$('#pf-cod')?.value||'',busy:true};render();vincular(S.pf.cod).then(pid=>{S.pf={ok:'Pronto. Agora você está na carteira de '+(nomeP(pid)||'seu Personal')+'.'};render()}).catch(e=>{S.pf={cod:S.pf.cod,err:e.message};render()});break}
+  case 'pfdesv':desvincular().then(()=>{S.conf=null;S.pf={ok:'Você saiu da carteira do Personal.'};render()}).catch(e=>{S.pf={err:'Não foi possível concluir: '+(e.message||e)};render()});break;
   case 'impopen':S.imp={aid:v};render();break;
   case 'impcancel':S.imp=null;render();break;
   case 'impgo':{try{S.imp.ok=importar(S.imp.aid,$('#imp-txt').value);S.imp.err=''}catch(e){S.imp.err=e.message;S.imp.ok=''}render();break}
   case 'vid':S.vid=v;render();break;
+  case 'semPno':LS.set('ft4.semP',1);render();break;
   /* navegação */
   case 'tab':go(v);if(v==='treino')keepAwake();break;
   case 'aluno':S.sel=v;S.sub='fichas';S.evoF='ativa';go('aluno');break;
@@ -564,12 +642,12 @@ document.addEventListener('click',e=>{
   case 'nfopen':S.newF={nome:'',base:b.dataset.b||'',owner:v};render();setTimeout(()=>$('#nf-nome')?.focus(),0);break;
   case 'nfcancel':S.newF=null;render();break;
   case 'nfsave':{const o=S.newF.owner,base=ficha(S.newF.base);const nome=S.newF.nome.trim()||(base?'Cópia de '+base.nome:'Nova ficha');
-   const nf=base?copyFicha(base,o,nome):{id:uid('f'),nome,semanas:8,arquivada:false,criada:Date.now(),modelo:o==='modelos',alunoId:o==='modelos'?null:o,autor:ME().nome,mig1:1,treinos:['Segunda','Quarta','Sexta'].map((d,i)=>({id:uid('t'),nome:'Treino '+LETRAS[i],dia:d,ex:[]}))};
+   const nf=base?copyFicha(base,o,nome):{id:uid('f'),nome,semanas:8,arquivada:false,criada:Date.now(),modelo:o==='modelos',global:o==='modelos'&&S.g,alunoId:o==='modelos'?null:o,autor:ME().nome,mig1:1,treinos:['Segunda','Quarta','Sexta'].map((d,i)=>({id:uid('t'),nome:'Treino '+LETRAS[i],dia:d,ex:[]}))};
    saveF(nf);if(o!=='modelos'&&!ativaDe(o))setAtiva(o,nf.id);S.newF=null;openEditor(nf.id);break}
   case 'open':openEditor(v);break;
   case 'ativar':{const x=ficha(v);if(x.arquivada){x.arquivada=false;saveF(x)}setAtiva(x.alunoId,v);render();break}
   case 'dup':{const nf=copyFicha(ficha(v),ficha(v).alunoId,'Cópia de '+ficha(v).nome);saveF(nf);openEditor(nf.id);break}
-  case 'tomodel':{const nf=copyFicha(ficha(v),'modelos',ficha(v).nome);saveF(nf);S.conf=null;S.back='modelos';openEditor(nf.id);break}
+  case 'tomodel':{const nf=copyFicha(ficha(v),'modelos',ficha(v).nome);saveF(nf);S.conf=null;S.back=S.g?'gestao':'modelos';if(S.g)S.gsub='modelos';openEditor(nf.id);break}
   case 'arq':{f.arquivada=!f.arquivada;saveF(f);if(f.arquivada){const p=perfil(f.alunoId);if(p?.ativa===f.id){const o=fichasDe(f.alunoId).find(x=>!x.arquivada&&x.id!==f.id);setAtiva(f.alunoId,o?o.id:null)}}render();break}
   case 'delf':{const aid=f.alunoId;del('fichas',v);if(aid&&perfil(aid)?.ativa===v){const o=fichasDe(aid).find(x=>!x.arquivada);setAtiva(aid,o?o.id:null)}go(S.back);break}
   case 'conf':S.conf=v||null;render();break;

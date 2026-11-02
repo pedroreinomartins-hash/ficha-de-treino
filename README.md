@@ -2,9 +2,11 @@
 
 Aplicativo web para controle de treinos de academia, com acesso para alunos e para o Personal.
 
+**Gestor:** aba Gestão com todos os Personais e alunos, liberação de Personais, transferência de alunos e modelos para todos.
+
 **Aluno:** treino do dia com cronômetro de sessão, descanso automático com vibração e som, isometrias cronometradas, registro de carga e repetições, escala de dor no joelho, avaliação do esforço ao final, fotos de execução e vídeo de cada exercício, frequência semanal, gráficos de evolução e histórico. O aluno pode criar e editar as próprias fichas.
 
-**Personal:** painel com todos os alunos (frequência da semana em relação à meta, último treino e alertas de dor, piora do joelho, esforço alto, ausência e recados), fichas de cada aluno, modelos reutilizáveis, evolução, histórico e cadastro de alunos.
+**Personal:** painel com os alunos da sua carteira (frequência da semana em relação à meta, último treino e alertas de dor, piora do joelho, esforço alto, ausência e recados), fichas de cada aluno, modelos reutilizáveis, evolução, histórico e cadastro de alunos.
 
 Tecnologia: HTML e JavaScript puros, publicados no **GitHub Pages**, com login e banco de dados no **Firebase** (Authentication + Cloud Firestore). As fotos dos exercícios vêm da [Free Exercise DB](https://github.com/yuhonas/free-exercise-db), de domínio público.
 
@@ -37,20 +39,26 @@ Esses dados não são secretos; quem protege as informações são as regras do 
 3. Após 1 ou 2 minutos, o app fica disponível em `https://pedroreinomartins-hash.github.io/ficha-de-treino/`.
 4. No Firebase, em **Authentication → Settings → Domínios autorizados**, adicione `pedroreinomartins-hash.github.io`.
 
-### 4. Liberar o acesso do Personal
+### 4. Definir o gestor (uma única vez)
 
-1. O Personal abre o app e usa **Criar conta** com o e-mail dele.
-2. No Firebase, em **Authentication → Usuários**, copie o **UID do usuário** do Personal.
-3. Em **Firestore Database → Dados**, clique em **Iniciar coleção**, com ID `admins`.
-   - ID do documento: cole o UID do Personal;
-   - campo: `nome`, tipo string, valor `Personal`.
-4. O Personal sai do app e entra de novo. A tela passa a ser o painel de alunos.
+O gestor vê todos os Personais e alunos, libera novos Personais e transfere alunos.
 
-### 5. Cadastrar os alunos
+1. O gestor entra no app (com Google ou e-mail).
+2. No Firebase, em **Authentication → Usuários**, copie o **UID do usuário** dele.
+3. Em **Firestore Database → Dados**, clique em **Iniciar coleção**, com ID `gestores`.
+   - ID do documento: cole o UID;
+   - campo: `nome`, tipo string, valor do nome do gestor.
+4. O gestor sai do app e entra de novo. Aparece a aba **Gestão**.
 
-Cada aluno pode usar **Criar conta**, ou o Personal pode cadastrar pelo painel (**+ Cadastrar aluno**), informando nome, e-mail e uma senha provisória.
+### 5. Personais e alunos
 
-Na primeira vez, o Personal pode tocar em **Modelos → Carregar os 2 modelos iniciais** para ter as fichas-base de condropatia e tendinite patelar.
+- **Liberar um Personal:** a pessoa entra no app uma vez. O gestor abre **Gestão → Personais**, escolhe o usuário e toca em **Liberar como Personal**. O app gera o código de convite do Personal (ex.: `RAFA27`).
+- **Aluno entrar na carteira:** o aluno abre **Meu perfil** (toque no nome, no alto da tela), informa o código do Personal e toca em **Vincular**. Fichas, treinos e histórico passam a ser vistos pelo Personal.
+- **Cadastro pelo Personal:** no painel, **+ Cadastrar aluno**, com nome, e-mail e senha provisória. O aluno já entra na carteira dele.
+- **Transferir aluno:** o gestor abre **Gestão → Alunos → aluno → Cadastro** e escolhe o novo Personal responsável. O histórico vai junto.
+- **Modelos:** cada Personal tem os próprios modelos. Os modelos criados pelo gestor ficam disponíveis para todos. Na primeira vez, toque em **Modelos → Carregar os 2 modelos iniciais**.
+
+Cada Personal só enxerga os alunos da própria carteira. Isso é garantido pelas regras do Firestore, não só pelo app.
 
 ### 6. Trazer os dados do app de teste
 

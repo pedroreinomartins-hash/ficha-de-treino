@@ -1,42 +1,86 @@
 rules_version = '2';
 // Regras de acesso do app Ficha de Treino.
-// - O aluno lê e grava apenas os próprios dados (perfil, fichas e treinos) e pode ler os modelos.
-// - O Personal (UID cadastrado na coleção "admins") lê e grava tudo.
-// - A coleção "admins" só pode ser alterada pelo Console do Firebase.
+// Papéis:
+//  - Gestor: UID cadastrado na coleção "gestores" (criada pelo Console do Firebase). Vê e altera tudo.
+//  - Personal: UID cadastrado em "personais" (liberado pelo gestor no app). Vê só os alunos da própria carteira.
+//  - Aluno: vê e altera só os próprios dados; entra na carteira de um Personal com um código de convite válido.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signed() { return request.auth != null; }
     function me() { return request.auth.uid; }
-    function isPT() { return signed() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isG() { return signed() && exists(/databases/$(database)/documents/gestores/$(request.auth.uid)); }
+    function isP() { return signed() && exists(/databases/$(database)/documents/personais/$(request.auth.uid)); }
+    function myPersonal() { return get(/databases/$(database)/documents/perfis/$(request.auth.uid)).data.get('personalId', ''); }
     function novo() { return request.resource.data; }
+    function antigo() { return resource.data; }
+    function pid(d) { return d.get('personalId', ''); }
+    function conviteOK(d) {
+      return d.get('convite', '') != ''
+        && exists(/databases/$(database)/documents/convites/$(d.get('convite', '')))
+        && get(/databases/$(database)/documents/convites/$(d.get('convite', ''))).data.personalId == pid(d);
+    }
+    function alunoDoPersonal(aid) {
+      return aid != '' && get(/databases/$(database)/documents/perfis/$(aid)).data.get('personalId', '') == me();
+    }
 
-    match /admins/{uid} {
-      allow read: if signed() && (me() == uid || isPT());
+    match /gestores/{uid} {
+      allow read: if signed() && me() == uid;
       allow write: if false;
+    }
+    match /personais/{uid} {
+      allow read: if signed();
+      allow write: if isG();
+    }
+    match /convites/{codigo} {
+      allow read: if signed();
+      allow write: if isG();
     }
 
     match /perfis/{uid} {
-      allow read: if isPT() || (signed() && me() == uid);
-      allow create: if isPT() || (signed() && me() == uid && novo().papel == 'aluno');
-      allow update: if isPT() || (signed() && me() == uid
-                     && novo().papel == resource.data.papel
-                     && novo().get('ativo', true) == resource.data.get('ativo', true));
-      allow delete: if isPT();
+      allow read: if isG() || (signed() && me() == uid) || (isP() && pid(antigo()) == me());
+      allow create: if isG()
+        || (signed() && me() == uid && novo().papel == 'aluno' && (pid(novo()) == '' || conviteOK(novo())))
+        || (isP() && novo().papel == 'aluno' && pid(novo()) == me());
+      allow update: if isG()
+        || (signed() && me() == uid
+            && novo().papel == antigo().papel
+            && novo().get('ativo', true) == antigo().get('ativo', true)
+            && (pid(novo()) == pid(antigo()) || pid(novo()) == '' || conviteOK(novo())))
+        || (isP() && pid(antigo()) == me() && pid(novo()) == me() && novo().papel == antigo().papel);
+      allow delete: if isG();
     }
 
     match /fichas/{id} {
-      allow read: if isPT() || (signed() && (resource.data.get('modelo', false) == true
-                                            || resource.data.get('alunoId', '') == me()));
-      allow create: if isPT() || (signed() && novo().get('alunoId', '') == me() && novo().get('modelo', false) != true);
-      allow update: if isPT() || (signed() && resource.data.get('alunoId', '') == me()
-                                           && novo().get('alunoId', '') == me() && novo().get('modelo', false) != true);
-      allow delete: if isPT() || (signed() && resource.data.get('alunoId', '') == me());
+      allow read: if isG()
+        || (signed() && antigo().get('alunoId', '') == me())
+        || (signed() && antigo().get('global', false) == true)
+        || (isP() && pid(antigo()) == me())
+        || (signed() && antigo().get('modelo', false) == true && pid(antigo()) != '' && pid(antigo()) == myPersonal());
+      allow create, update: if isG()
+        || (signed() && novo().get('alunoId', '') == me()
+            && novo().get('modelo', false) != true && novo().get('global', false) != true
+            && pid(novo()) == myPersonal()
+            && (resource == null || antigo().get('alunoId', '') == me()))
+        || (isP() && pid(novo()) == me() && novo().get('global', false) != true
+            && (resource == null || pid(antigo()) == me())
+            && (novo().get('modelo', false) == true || alunoDoPersonal(novo().get('alunoId', ''))));
+      allow delete: if isG()
+        || (signed() && antigo().get('alunoId', '') == me())
+        || (isP() && pid(antigo()) == me());
     }
 
     match /sessions/{id} {
-      allow read, delete: if isPT() || (signed() && resource.data.get('alunoId', '') == me());
-      allow create: if isPT() || (signed() && novo().get('alunoId', '') == me());
-      allow update: if isPT() || (signed() && resource.data.get('alunoId', '') == me() && novo().get('alunoId', '') == me());
+      allow read: if isG()
+        || (signed() && antigo().get('alunoId', '') == me())
+        || (isP() && pid(antigo()) == me());
+      allow create, update: if isG()
+        || (signed() && novo().get('alunoId', '') == me() && pid(novo()) == myPersonal()
+            && (resource == null || antigo().get('alunoId', '') == me()))
+        || (isP() && pid(novo()) == me() && (resource == null || pid(antigo()) == me())
+            && alunoDoPersonal(novo().get('alunoId', '')));
+      allow delete: if isG()
+        || (signed() && antigo().get('alunoId', '') == me())
+        || (isP() && pid(antigo()) == me());
     }
   }
 }
