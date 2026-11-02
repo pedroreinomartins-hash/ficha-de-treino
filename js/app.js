@@ -115,7 +115,7 @@ async function onAuth(u){
  S.me=u.uid;S.ready=false;render();
  try{const a=await fdb.collection('admins').doc(u.uid).get();S.pt=a.exists}catch(e){S.pt=false}
  try{const ref=fdb.collection('perfis').doc(u.uid),ps=await ref.get();
-  if(!ps.exists)await ref.set({id:u.uid,nome:(S.auth.nome||'').trim()||u.email.split('@')[0],email:u.email,papel:S.pt?'personal':'aluno',ativo:true,ativa:null,criado:Date.now()});
+  if(!ps.exists)await ref.set({id:u.uid,nome:(S.auth.nome||'').trim()||u.displayName||u.email.split('@')[0],email:u.email,papel:S.pt?'personal':'aluno',ativo:true,ativa:null,criado:Date.now()});
   else if(S.pt&&ps.data().papel!=='personal')await ref.update({papel:'personal'});
  }catch(e){console.warn(e)}
  const uid=u.uid,C=c=>fdb.collection(c);
@@ -136,7 +136,7 @@ function put(c,o){const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)a
 function del(c,id){S[c]=S[c].filter(x=>x.id!==id);if(fdb)fdb.collection(c).doc(id).delete().catch(e=>console.warn(e))}
 function soft(){if(S.view==='treino'||document.activeElement?.matches?.('#app input,#app textarea,#app select'))return;render()}
 function toast(t){let el=$('#toast');if(!el){el=document.createElement('div');el.id='toast';document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3500)}
-const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password':'Informe a senha.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/email-already-in-use':'Este e-mail já tem cadastro. Use "Entrar".','auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão com a internet.'};
+const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password':'Informe a senha.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/email-already-in-use':'Este e-mail já tem cadastro. Use "Entrar".','auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão com a internet.','auth/operation-not-allowed':'Esse tipo de login não está ativado no Firebase.','auth/unauthorized-domain':'Este endereço não está autorizado no Firebase (Authentication → Settings → Domínios autorizados).','auth/account-exists-with-different-credential':'Este e-mail já tem cadastro com senha. Entre com e-mail e senha.'};
 const authMsg=e=>AUTH_ERR[e?.code]||('Não foi possível concluir: '+(e?.message||e));
 async function criarAlunoPeloPersonal(nome,email,senha){
  const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(CFG,'cadastro');
@@ -214,7 +214,9 @@ function viewConfig(){return `<main class="wrap"><div><div class="eyebrow">Confi
 function viewSplash(){return `<main class="wrap"><div class="center" style="padding-top:30vh"><h1>Ficha de Treino</h1><div class="muted">Carregando…</div></div></main>`}
 function viewLogin(){const A=S.auth,cad=A.mode==='criar',rec=A.mode==='senha';
  return `<main class="wrap" style="max-width:440px"><header style="padding-top:8vh"><div class="eyebrow">Treino, carga e frequência</div><h1 style="font-size:40px">Ficha de Treino</h1></header>
- ${rec?'':`<div class="subtabs"><button data-act="amode" data-v="entrar" class="${!cad?'on':''}">Entrar</button><button data-act="amode" data-v="criar" class="${cad?'on':''}">Criar conta</button></div>`}
+ ${rec?'':`<button class="btn gbtn" type="button" data-act="google" ${A.busy?'disabled':''}><svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
+ <div class="or"><span>ou com e-mail e senha</span></div>
+ <div class="subtabs"><button data-act="amode" data-v="entrar" class="${!cad?'on':''}">Entrar</button><button data-act="amode" data-v="criar" class="${cad?'on':''}">Criar conta</button></div>`}
  <form class="panel" id="authForm" novalidate>
   ${rec?'<h2>Redefinir senha</h2><div class="small muted">Enviaremos um link para o seu e-mail.</div>':''}
   ${cad?`<div class="field"><label class="lbl" for="au-nome">Seu nome</label><input id="au-nome" class="txt" autocomplete="name" value="${esc(A.nome)}" placeholder="Ex.: P. Augusto"></div>`:''}
@@ -225,6 +227,10 @@ function viewLogin(){const A=S.auth,cad=A.mode==='criar',rec=A.mode==='senha';
   ${rec?`<button class="btn ghost" type="button" data-act="amode" data-v="entrar">Voltar</button>`:cad?'':`<button class="btn ghost" type="button" data-act="amode" data-v="senha">Esqueci minha senha</button>`}
  </form>
  <div class="small muted" style="text-align:center">Alunos podem criar a própria conta. O acesso de Personal é liberado pelo administrador.</div></main>`}
+async function googleLogin(){const A=S.auth;A.err='';A.ok='';const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+ try{await fbAuth.signInWithPopup(prov)}
+ catch(e){if(e?.code==='auth/popup-blocked'||e?.code==='auth/operation-not-supported-in-this-environment'){try{await fbAuth.signInWithRedirect(prov);return}catch(e2){e=e2}}
+  if(e?.code==='auth/popup-closed-by-user'||e?.code==='auth/cancelled-popup-request')return;A.err=authMsg(e);render()}}
 async function submitAuth(){const A=S.auth;A.email=($('#au-email')?.value||'').trim();if($('#au-nome'))A.nome=$('#au-nome').value;const senha=$('#au-senha')?.value||'';A.err='';A.ok='';
  if(A.mode==='criar'&&!A.nome.trim()){A.err='Informe seu nome.';render();return}
  A.busy=true;render();
@@ -532,6 +538,7 @@ document.addEventListener('click',e=>{
  const act=b.dataset.act,v=b.dataset.v,a=S.active,f=curFicha();
  switch(act){
   /* entrada */
+  case 'google':googleLogin();break;
   case 'amode':S.auth={...S.auth,mode:v,err:'',ok:'',email:($('#au-email')?.value||S.auth.email)};render();break;
   case 'logout':releaseAwake();S.view='login';S.newU=null;S.auth={mode:'entrar',email:'',nome:'',err:'',ok:''};fbAuth&&fbAuth.signOut();window.scrollTo(0,0);break;
   case 'nuopen':S.newU={nome:'',email:'',senha:''};render();setTimeout(()=>$('#nu-nome')?.focus(),0);break;
