@@ -68,6 +68,16 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 - Academias: o gestor importa do OpenStreetMap por cidade em **Gestão → Academias** (com revisão e sem duplicar as já cadastradas); o Personal também pode sugerir (com preenchimento pelo CEP) e o gestor aprova. Dados do OpenStreetMap: © contribuidores do OpenStreetMap, licença ODbL.
 - O aluno usa **Encontrar um Personal**, com filtros por cidade, bairro, academia, especialidade e modalidade. **Alunos nunca aparecem em buscas.**
 
+### Ficha com IA
+
+Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Modelos):
+
+1. **Pedido para a IA:** o usuário preenche objetivo, nível, frequência, duração, local, restrições e preferências, e toca em **Copiar pedido**. O texto já pede à IA a resposta no formato que o app entende.
+2. **Colar resposta:** cola o que o ChatGPT, Claude ou Gemini respondeu. O app reconhece treinos, exercícios, séries, repetições, tempo, descanso e observações (também lê listas e tabelas comuns).
+3. **Prévia editável:** confere, corrige, inclui ou remove exercícios e cria a ficha.
+
+O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA" e o Personal do aluno recebe um aviso no painel. A geração automática dentro do app está prevista para o plano Premium.
+
 ### Termos e privacidade
 
 `termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.

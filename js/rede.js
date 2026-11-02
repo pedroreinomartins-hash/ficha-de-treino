@@ -231,7 +231,7 @@ document.addEventListener('input',e=>{const el=e.target;
  if(el.dataset.bs==='bairro'&&S.busca){S.busca.bairro=el.value;clearTimeout(S._bt);S._bt=setTimeout(()=>{const pos=el.selectionStart;render();const n=document.querySelector('[data-bs=bairro]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}},350)}
 });
 document.addEventListener('change',e=>{const el=e.target;
- if(el.dataset.pp&&S.pp){S.pp[el.dataset.pp]=el.type==='checkbox'?el.checked:el.value;if(el.dataset.pp.startsWith('cref'))render()}
+ if(el.dataset.pp&&S.pp){S.pp[el.dataset.pp]=el.type==='checkbox'?el.checked:el.value;if(el.tagName==='SELECT'&&el.dataset.pp.startsWith('cref'))render()}
  if(el.dataset.ppac&&S.pp){const id=el.dataset.ppac,l=S.pp.academias;if(el.checked&&!l.includes(id))l.push(id);if(!el.checked)S.pp.academias=l.filter(x=>x!==id)}
  if(el.dataset.ac&&S.ac)S.ac[el.dataset.ac]=el.value;
  if(el.dataset.bs&&el.dataset.bs!=='bairro'&&S.busca){S.busca[el.dataset.bs]=el.type==='checkbox'?(el.checked?'1':''):el.value;if(el.dataset.bs==='cidade')S.busca.acad='';render()}

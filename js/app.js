@@ -187,6 +187,7 @@ function nextIdx0(f){const ss=S.sessions.filter(s=>s.fichaId===f.id);if(!ss.leng
 function weekCount(ws,aid,fid){return S.sessions.filter(s=>s.alunoId===aid&&weekStart(s.inicio)===ws&&(!fid||s.fichaId===fid)).length}
 function programWeek(f){const ss=S.sessions.filter(s=>s.fichaId===f.id);if(!ss.length)return 1;return Math.floor((weekStart(Date.now())-weekStart(Math.min(...ss.map(s=>s.inicio))))/(7*DAY))+1}
 function alertas(aid){const out=[],now=Date.now(),ss=sessDe(aid);
+ fichasDe(aid).filter(f=>f.origem==='ia'&&f.autorId===aid&&now-(f.criada||0)<14*DAY).forEach(f=>out.push({c:'info',t:`Criou a ficha “${f.nome}” com sugestão de IA em ${ddmm(f.criada)}. Vale revisar.`}));
  if(!ss.length){out.push({c:'warn',t:'Ainda não registrou treinos'});return out}
  const dias=Math.floor((now-ss[0].fim)/DAY);if(dias>=5)out.push({c:'warn',t:`Sem treinar há ${dias} dias`});
  ss.filter(s=>now-s.inicio<14*DAY).forEach(s=>{const mx=Math.max(-1,...Object.values(s.ex).filter(r=>r.dor!=null).map(r=>r.dor));if(mx>=5)out.push({c:'bad',t:`Dor ${mx}/10 no joelho em ${ddmm(s.inicio)}`});
@@ -232,7 +233,7 @@ const IC={
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
 function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']]).concat(S.g?[['gestao','Gestão']]:[]);
- const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:''};const cur=S.view in map?map[S.view]:S.view;
+ const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:'',ia:S.ia?.back||''};const cur=S.view in map?map[S.view]:S.view;
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
 function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
@@ -309,10 +310,10 @@ function fichasList(owner){
  const nf=S.newF&&S.newF.owner===owner?`<section class="form"><h3>${isM?'Novo modelo':'Nova ficha'}</h3>
   <div class="field"><label class="lbl" for="nf-nome">Nome</label><input id="nf-nome" class="txt" data-nf="nome" value="${esc(S.newF.nome)}" placeholder="Ex.: Ciclo 2 – hipertrofia"></div>
   <div class="field"><label class="lbl" for="nf-base">Começar com</label><select id="nf-base" data-nf="base"><option value="">Ficha vazia (3 treinos: A, B e C)</option>${opts.filter(o=>o[1].length).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(f=>`<option value="${f.id}" ${S.newF.base===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</optgroup>`).join('')}</select></div>
-  <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button>`;
+  <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<div class="nav2"><button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button><button class="btn ghost" data-act="iaopen" data-v="${owner}">✦ Criar com IA</button></div>`;
  if(isM&&S.p)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
  const card=f=>{const on=at&&at.id===f.id;const n=S.sessions.filter(s=>s.fichaId===f.id).length;return `<section class="panel" style="gap:10px">
-  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}`):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
+  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${f.origem==='ia'?' · sugestão de IA':''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}`):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${f.treinos.map((t,i)=>letter(LETRAS[i],'s')).join('')}</div>
   <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
  const ativas=lista.filter(f=>!f.arquivada),arq=lista.filter(f=>f.arquivada);
@@ -335,6 +336,7 @@ function importar(aid,txt){let d;try{d=JSON.parse(txt)}catch(e){throw new Error(
 function viewFicha(){
  const f=ficha(S.edit);if(!f){S.view=S.back;return render0()}
  const C=S.conf,isM=!!f.modelo,at=!isM&&ativaDe(f.alunoId)?.id===f.id,dono=isM?'Modelo do Personal':'Ficha de '+esc(perfil(f.alunoId)?.nome||'aluno');
+ const iaNota=f.origem==='ia'?`<div class="note warn">Ficha sugerida por IA${f.autor?' e criada por '+esc(f.autor):''}. Revise com um Personal ou profissional de saúde, principalmente se houver lesões ou dores.</div>`:'';
  const head=`<section class="panel">
   <div class="field"><label class="lbl" for="f-nome">Nome da ficha</label><input id="f-nome" class="txt" data-ch="fnome" value="${esc(f.nome)}"></div>
   <div class="grid2"><div class="field"><label class="lbl" for="f-sem">Duração do ciclo (semanas)</label><input id="f-sem" class="txt" data-ch="fsem" inputmode="numeric" value="${f.semanas||8}"></div><div class="field"><span class="lbl">Meta semanal</span><div class="num" style="font-size:26px;padding-top:4px">${f.treinos.length} treinos</div></div></div>
@@ -358,7 +360,7 @@ function viewFicha(){
    ${adding?exForm():`<button class="btn dash" data-act="adde" data-t="${t.id}">+ Incluir exercício</button>`}
    ${C===kt?`<div class="miniconf"><span class="grow">Excluir o treino ${LETRAS[ti]} e seus exercícios?</span><button class="btn sm danger" data-act="delt" data-v="${t.id}">Excluir</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn sm ghost" style="align-self:flex-start;color:var(--bad)" data-act="conf" data-v="${kt}">Excluir treino ${LETRAS[ti]}</button>`}
   </section>`}).join('');
- return page(dono,esc(f.nome),`${head}${treinos}${f.treinos.length<7?`<button class="btn dash" data-act="addt">+ Incluir treino ${LETRAS[f.treinos.length]}</button>`:''}`,{back:S.back})}
+ return page(dono,esc(f.nome),`${iaNota}${head}${treinos}${f.treinos.length<7?`<button class="btn dash" data-act="addt">+ Incluir treino ${LETRAS[f.treinos.length]}</button>`:''}`,{back:S.back})}
 function exForm(){const d=S.form.d;return `<div class="form" id="exform">
  <h3>${S.form.e?'Editar exercício':'Novo exercício'}</h3>
  <div class="field"><label class="lbl" for="fx-n">Nome</label><input id="fx-n" class="txt" data-f="n" list="exlib" value="${esc(d.n)}" placeholder="Digite ou escolha da lista"></div>
@@ -533,6 +535,7 @@ function render0(){
  const v=S.view;
  if(v==='perfil')return viewPerfil();
  if(v==='busca')return viewBusca();
+ if(v==='ia')return viewIA();
  if(v==='aluno'&&isPT())return viewAluno();
  if(v==='ficha')return viewFicha();
  if(PM()){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));if(S.g&&v==='gestao')return viewGestao();S.view='alunos';return viewAlunos()}
@@ -549,7 +552,7 @@ function render(){
  const gs=$('#gfSel');if(gs)gs.onchange=()=>{S.gf=gs.value;render()};
  const es=$('#evoSel');if(es)es.onchange=()=>{S.evoF=es.value;render()};
  document.querySelectorAll('#app input[data-k]').forEach(inp=>inp.onchange=()=>{const v=parseFloat(inp.value.replace(',','.'));draft(curEx())[inp.dataset.k]=isNaN(v)?0:Math.max(0,v);saveActive()});
- const dl=$('#exlib');if(dl&&S.view==='ficha'){const set=new Set(LIB);S.fichas.forEach(f=>f.treinos.forEach(t=>t.ex.forEach(e=>set.add(e.n))));dl.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'pt')).map(n=>`<option value="${esc(n)}">`).join('')}
+ const dl=$('#exlib');if(dl&&(S.view==='ficha'||S.view==='ia')){const set=new Set(LIB);S.fichas.forEach(f=>f.treinos.forEach(t=>t.ex.forEach(e=>set.add(e.n))));dl.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'pt')).map(n=>`<option value="${esc(n)}">`).join('')}
 }
 const go=v=>{S.view=v;S.pf=null;S.gmsg=null;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
 function findEx(f,tid,eid){const t=f.treinos.find(x=>x.id===tid);return {t,i:t?t.ex.findIndex(e=>e.id===eid):-1}}
@@ -568,14 +571,14 @@ document.addEventListener('change',e=>{const el=e.target,ch=el.dataset.ch;
  if(el.dataset.f&&S.form&&el.type==='checkbox')S.form.d[el.dataset.f]=el.checked;
  if(el.dataset.nf&&S.newF)S.newF[el.dataset.nf]=el.value;
  if(!ch)return;
- if(ch==='meunome'){const p=ME(),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
+ if(ch==='meunome'){const p=ME(),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);document.querySelectorAll('.me span').forEach(x=>x.textContent=v)}return}
  if(ch==='transf'){transferir(S.sel,el.value).then(()=>{toast('Personal responsável atualizado.');render()}).catch(e=>toast('Não foi possível transferir: '+(e.message||e)));return}
- if(ch==='pnome'){const p=perfil(S.sel),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
+ if(ch==='pnome'){const p=perfil(S.sel),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);const h=$('main h1');if(h)h.textContent=v}return}
  const f=curFicha();if(!f)return;
  if(ch==='fnome'){const v=el.value.trim();if(v)f.nome=v}
  if(ch==='fsem'){const v=parseInt(el.value,10);if(v>0&&v<53)f.semanas=v}
  if(ch==='tnome'||ch==='tdia'){const t=f.treinos.find(x=>x.id===el.dataset.t);if(t){if(ch==='tnome'){const v=el.value.trim();if(v)t.nome=v}else t.dia=el.value}}
- saveF(f);if(ch==='fnome'||ch==='fsem')render();
+ saveF(f);if(ch==='fnome'){const h=$('main h1');if(h)h.textContent=f.nome}
 });
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;unlockAudio();
