@@ -42,7 +42,7 @@ function iaLimpa(t){return String(t||'').replace(/\*\*|__|`/g,'').replace(/^\s*(
 function iaSeries(t){const s=String(t);
  let m=s.match(/(\d{1,2})\s*(?:x|×|X)\s*(\d+(?:\s*(?:-|–|a|ou|\/)\s*\d+)?\s*(?:s\b|seg[a-zà-ú]*|min[a-zà-ú]*|''|'|"|rep[a-zà-ú]*)?(?:\s*(?:por|cada)\s*(?:perna|lado|bra[cç]o))?)/i);
  if(m)return {i:m.index,len:m[0].length,s:+m[1],r:m[2].trim()};
- m=s.match(/(\d{1,2})\s*s[ée]ries?\s*(?:de|com|x|×|:)?\s*(\d+(?:\s*(?:-|–|a|ou|\/)\s*\d+)?\s*(?:s\b|seg[a-zà-ú]*|min[a-zà-ú]*|rep[a-zà-ú]*)?(?:\s*(?:por|cada)\s*(?:perna|lado|bra[cç]o))?)?/i);
+ m=s.match(/(\d{1,2})\s*(?:s[ée]ries?|sets?)\s*(?:de|com|of|x|×|:|•|·|,|–|-)?\s*(\d+(?:\s*(?:-|–|a|ou|\/)\s*\d+)?\s*(?:s\b|seg[a-zà-ú]*|min[a-zà-ú]*|rep[a-zà-ú]*)?(?:\s*(?:por|cada)\s*(?:perna|lado|bra[cç]o))?)?/i);
  if(m)return {i:m.index,len:m[0].length,s:+m[1],r:(m[2]||'').trim()};
  return null}
 function iaDescanso(t){const s=nk(t);let m=s.match(/(?:descanso|intervalo|pausa)\s*(?:de|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:-|a|–)?\s*\d*\s*(min[a-zà-ú]*|'|s\b|seg[a-zà-ú]*|")?/);
@@ -55,40 +55,73 @@ function iaEx(nome,s,r,desc,nota){nome=nome.replace(/\s*[:\-–—|(]+\s*$/,'').
  if(IA_JOELHO.test(nk(nome)))e.knee=1;if(/reab|isometr|spanish/.test(nk(nome)))e.reab=1;
  if(nota&&nota.trim())e.nota=nota.trim().replace(/^[(\-–—:|,;]+|[)\s]+$/g,'').trim().slice(0,140);
  if(!e.nota)delete e.nota;e.semSeries=!s;return e}
+const IA_DUR=/(\d+(?:[.,]\d+)?)\s*(?:(?:-|–|a)\s*\d+\s*)?(min(?:utos?)?|'|s\b|seg(?:undos?)?|")/i;
+const IA_DESC_ONLY=/^(?:com\s*)?(?:descanso|intervalo|pausa entre s[eé]ries)\s*(?:de|:)?\s*[\d.,]+\s*(?:-|a|–)?\s*\d*\s*(?:min[a-zà-ú]*|'|s\b|seg[a-zà-ú]*|")?\.?$/i;
+function iaSemPrefixo(l){return String(l).replace(/^[\s#>*_ ]+/,'').replace(/^[\p{Extended_Pictographic}️‍☀-➿■-◿\s]+/u,'')}
 function iaParse(texto){
  const linhas=String(texto||'').replace(/\r/g,'').split('\n');const out={nome:'',treinos:[],avisos:[]};let cur=null,pend=null,colunas=null;
  const novoTreino=(nome,dia)=>{cur={id:uid('t'),nome:nome||'',dia:dia||'',ex:[]};out.treinos.push(cur);pend=null;colunas=null};
  const garante=()=>{if(!cur)novoTreino('','')};
- for(let raw of linhas){let l=raw.trim();if(!l)continue;
-  const lc=iaLimpa(l.replace(/^#+\s*/,''));
+ const ultimo=()=>pend||(cur&&cur.ex[cur.ex.length-1]);
+ const aplicaSeries=(e,s,r)=>{e.s=s||e.s;if(r){e.r=r;e.tipo=iaTipo(e.n,r);if(e.tipo==='t')e.hold=iaSegundos(r)||30}e.semSeries=false};
+ const soDuracao=(nome,txt)=>{const m=String(txt).match(IA_DUR);return m&&(IA_TEMPO.test(nk(nome))||/aquec/i.test(txt))?m[0].replace(/\s+/g,' '):null};
+ const proxima=k=>{for(let j=k+1;j<linhas.length;j++){const t=iaLimpa(iaSemPrefixo(linhas[j].trim()));if(t)return t}return ''};
+ const nomeTreino=t=>t.replace(/\s*[(\[]?\s*(segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|domingo)(-feira)?\s*[)\]]?\s*$/i,'').replace(/[\s(\[–—-]+$/,'').trim();
+ for(let k=0;k<linhas.length;k++){let l=linhas[k].trim();if(!l)continue;
+  const l0=iaSemPrefixo(l);const marcado=l0!==l.replace(/^\s+/,'');let lc=iaLimpa(l0);if(!lc)continue;
+  let notaExtra='';const aq=lc.match(/^(aquecimento|cardio|alongamento final|desaquecimento)\s*[:\-–]\s*(.+)$/i);if(aq&&/\d/.test(aq[2])){notaExtra=aq[1];lc=aq[2]}
   // Nome da ficha
   let m=lc.match(/^ficha\s*(?:de treino)?\s*[:\-–—]\s*(.+)$/i);if(m){out.nome=m[1].replace(/[*_#]/g,'').trim();continue}
-  // Cabeçalho de treino
-  m=lc.match(/^(?:treino|dia|sess[aã]o|workout|day)\s*([A-Ga-g]|\d{1,2})\b\s*[:\-–—|.)]?\s*(.*)$/i);
-  if(m&&!iaSeries(m[2])){const resto=m[2].replace(/[*_#]/g,'').split('|').map(x=>x.trim());novoTreino(resto[0]||'',iaDia(resto.slice(1).join(' ')||resto[0]));continue}
+  // Cabeçalho de treino: "Treino A", "Dia 1", "Sessão 2", "Treino de Pernas – Segunda"
+  m=lc.match(/^(?:treino|dia|sess[aã]o|workout|day|rotina)\s*([A-Ga-g]|\d{1,2})\b\s*[:\-–—|.)]?\s*(.*)$/i);
+  if(m&&!iaSeries(m[2])){const resto=m[2].replace(/[*_#]/g,'').split('|').map(x=>x.trim());novoTreino(nomeTreino(resto[0].replace(/^[(\[]/,''))||'',iaDia(resto.slice(1).join(' ')||resto[0]));continue}
+  // Cabeçalho pelo dia da semana: "Segunda-feira – Peito e tríceps"
+  m=lc.match(/^(segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|domingo)(?:-feira)?\s*[:\-–—|]\s*(.*)$/i);
+  if(m&&!iaSeries(lc)&&lc.length<70){novoTreino(m[2].replace(/[*_#]/g,'').trim(),iaDia(m[1]));continue}
   // Tabela markdown
   if(/^\|.*\|$/.test(l)){const cel=l.slice(1,-1).split('|').map(c=>iaLimpa(c));
    if(cel.every(c=>/^:?-{2,}:?$/.test(c)||!c))continue;
    if(cel.some(c=>/exerc/i.test(c))){colunas=cel.map(c=>nk(c));continue}
    garante();const idx=k=>colunas?colunas.findIndex(c=>k.test(c)):-1;
-   const iN=Math.max(0,idx(/exerc/)),iS=idx(/serie|sets/),iR=idx(/rep|tempo|dura/),iD=idx(/desc|interv|pausa/),iO=idx(/obs|nota|dica|cuidado/);
+   const iN=Math.max(0,idx(/exerc/)),iS=idx(/serie|sets/),iR=idx(/rep|tempo|dura/),iD=idx(/desc|interv|pausa/),iO=idx(/obs|nota|dica|cuidado|execu/);
    const nome=cel[iN]||'';const ss=iaSeries(cel.join(' | '));
-   const s=iS>=0?parseInt(cel[iS],10):ss?.s;const r=iR>=0?cel[iR]:ss?.r;const d=iD>=0?iaSegundos(cel[iD]):iaDescanso(l);
-   const e=iaEx(nome.replace(/^\d+[.)]\s*/,''),s,r,d,iO>=0?cel[iO]:'');if(e)cur.ex.push(e);continue}
+   let sN=iS>=0?parseInt(cel[iS],10):ss?.s;let r=iR>=0?cel[iR]:ss?.r;const d=iD>=0?iaSegundos(cel[iD]):iaDescanso(l);
+   if(!sN&&!r){const du=soDuracao(nome,cel.join(' '));if(du){sN=1;r=du}}
+   const e=iaEx(nome.replace(/^\d+[.)]\s*/,''),sN,r,d,iO>=0?cel[iO]:'');if(e)cur.ex.push(e);continue}
   colunas=null;
+  // Linhas de detalhe para o exercício anterior: "Séries: 3", "Repetições: 10-12", "Descanso: 60s", "Obs: ..."
+  m=lc.match(/^(s[eé]ries?|sets?)\s*[:\-–]\s*(\d{1,2})\b(.*)$/i);
+  if(m&&ultimo()){const e=ultimo();const resto=iaSeries(m[2]+' séries '+m[3]);aplicaSeries(e,+m[2],resto?.r||'');const d=iaDescanso(m[3]);if(d!=null)e.desc=d;if(e.r&&!e.semSeries)pend=null;continue}
+  m=lc.match(/^(repeti[cç][oõ]es|reps?|tempo|dura[cç][aã]o)\s*[:\-–]\s*(.+)$/i);
+  if(m&&ultimo()){const e=ultimo();aplicaSeries(e,e.semSeries?3:e.s,m[2].replace(/\.$/,'').trim());pend=null;continue}
+  m=lc.match(/^(obs(?:erva[cç][aã]o)?|dica|nota|cuidado|execu[cç][aã]o|aten[cç][aã]o)\s*[:\-–]\s*(.+)$/i);
+  if(m&&cur?.ex.length){const e=cur.ex[cur.ex.length-1];e.nota=((e.nota?e.nota+'; ':'')+m[2].trim()).slice(0,140);continue}
   // Formato com barras: Exercício | 3x10 | descanso 60s | obs
-  if(lc.includes('|')){const p=lc.split('|').map(x=>x.trim());const ss=iaSeries(p.slice(1).join(' | '));
-   if(ss||p.length>=3){garante();const e=iaEx(p[0],ss?.s,ss?.r,iaDescanso(p.slice(1).join(' ')),p.slice(1).filter(x=>!iaSeries(x)&&!/descanso|intervalo|pausa/i.test(x)).join('; '));if(e){cur.ex.push(e);pend=e.semSeries?e:null}continue}}
-  const ss=iaSeries(lc);
+  if(lc.includes('|')){const p=lc.split('|').map(x=>x.trim()).filter(x=>x!=='');const resto=p.slice(1);
+   let ss=iaSeries(resto.join(' | '));
+   if(ss&&!ss.r){const rm=resto.join(' ').match(/(\d+(?:\s*(?:-|–|a)\s*\d+)?)\s*(?:repeti[cç][oõ]es|reps?)\b/i);if(rm)ss={...ss,r:rm[1]}}
+   if(!ss){const sm=resto.join(' ').match(/(\d{1,2})\s*(?:s[eé]ries?|sets?)\b/i),rm=resto.join(' ').match(/(\d+(?:\s*(?:-|–|a)\s*\d+)?)\s*(?:repeti[cç][oõ]es|reps?)\b/i);if(sm)ss={s:+sm[1],r:rm?rm[1]:''}}
+   if(ss||p.length>=2){garante();let sN=ss?.s,r=ss?.r;
+    if(!ss){const du=soDuracao(p[0],resto.join(' | '));if(du){sN=1;r=du}}
+    const nota=resto.filter(x=>!iaSeries(x)&&!IA_DESC_ONLY.test(x)&&!(r&&!ss&&x.replace(/\s+/g,' ').includes(r))&&!/^\d{1,2}\s*(?:s[eé]ries?|sets?)$/i.test(x)&&!/^\d+(?:\s*(?:-|–|a)\s*\d+)?\s*(?:repeti[cç][oõ]es|reps?)$/i.test(x)).join('; ');
+    const bare=ss?resto.find(x=>/^\d+(?:[.,]\d+)?\s*(?:s|seg[a-zà-ú]*|min[a-zà-ú]*|')$/i.test(x)):null;
+    const nota2=bare?nota.split('; ').filter(x=>x!==bare).join('; '):nota;
+    let dsc=iaDescanso(resto.filter(x=>/descanso|intervalo|pausa entre/i.test(x)).join(' ')||resto.join(' '));if(dsc==null&&bare)dsc=iaSegundos(bare);
+    const e=iaEx(p[0],sN,r,dsc,nota2);
+    if(e){cur.ex.push(e);pend=e.semSeries?e:null}continue}}
+  let ss=iaSeries(lc);
   if(ss){const antes=lc.slice(0,ss.i),depois=lc.slice(ss.i+ss.len);
-   if(!/[a-zà-ú]{3}/i.test(antes.replace(/s[ée]ries?/i,''))&&pend){pend.s=ss.s;if(ss.r){pend.r=ss.r;pend.tipo=iaTipo(pend.n,ss.r);if(pend.tipo==='t')pend.hold=iaSegundos(ss.r)||30}const d=iaDescanso(lc);if(d!=null)pend.desc=d;pend.semSeries=false;pend=null;continue}
-   garante();const d=iaDescanso(lc);const nota=depois.replace(/(?:com\s*)?(?:descanso|intervalo|pausa)\s*(?:de|:)?\s*[\d.,]+\s*(?:-|a|–)?\s*\d*\s*(?:min[a-zà-ú]*|'|s\b|seg[a-zà-ú]*|")?/i,'').replace(/^[\s,;:\-–—.]+/,'');
-   const e=iaEx(antes,ss.s,ss.r,d,nota);if(e){cur.ex.push(e);pend=null}continue}
+   if(!/[a-zà-ú]{3}/i.test(antes.replace(/s[ée]ries?|sets?/i,''))&&ultimo()&&(pend||!cur.ex[cur.ex.length-1].r)){const e=ultimo();aplicaSeries(e,ss.s,ss.r);const d=iaDescanso(lc);if(d!=null)e.desc=d;pend=null;continue}
+   garante();const d=iaDescanso(lc);const nota=depois.replace(/(?:com\s*)?(?:descanso|intervalo|pausa)\s*(?:de|:)?\s*[\d.,]+\s*(?:-|a|–)?\s*\d*\s*(?:min[a-zà-ú]*|'|s\b|seg[a-zà-ú]*|")?/i,'').replace(/^[\s,;:\-–—.•·)]+/,'').replace(/^\(|\)$/g,'');
+   const e=iaEx(antes,ss.s,ss.r,d,[notaExtra,nota].filter(Boolean).join('; '));if(e){cur.ex.push(e);pend=null}continue}
   // Linha só com descanso, para o exercício anterior
   const d=iaDescanso(lc);if(d!=null&&cur?.ex.length&&lc.length<40){cur.ex[cur.ex.length-1].desc=d;continue}
-  // Linha com nome de exercício sem séries (as séries podem vir na linha seguinte)
-  const nome=lc.replace(/[*_]/g,'');
-  if(cur&&nome.length<=70&&/[a-zà-ú]{3}/i.test(nome)&&!/[.!?]$/.test(nome)&&!/:$/.test(nome)&&nome.split(' ').length<=9&&(/^\s*(?:[-*•·]|\d{1,2}[.)])\s+/.test(l)||IA_COMPOSTO.test(nk(nome))||IA_TEMPO.test(nk(nome))||media(nome))){const e=iaEx(nome,null,null,null,'');if(e){cur.ex.push(e);pend=e}}
+  // Aquecimento/cardio só com tempo: "Esteira 10 min", "Bicicleta: 5 minutos"
+  const du=soDuracao(lc,lc);
+  if(du&&lc.length<=80&&IA_TEMPO.test(nk(lc))){garante();const nomeT=lc.slice(0,lc.search(IA_DUR)).replace(/\b(de|por|durante)\s*$/i,'').trim()||lc;const e=iaEx(nomeT,1,du,null,[notaExtra,lc.slice(lc.search(IA_DUR)+du.length)].filter(Boolean).join('; '));if(e){cur.ex.push(e);pend=null}continue}
+  // Nome de exercício sem séries (os detalhes podem vir nas linhas seguintes)
+  const nome=lc.replace(/[*_]/g,'').replace(/:$/,'').trim();
+  if(cur&&nome.length<=70&&/[a-zà-ú]{3}/i.test(nome)&&!/[.!?]$/.test(nome)&&nome.split(' ').length<=9&&(marcado||/^\s*(?:[-*•·]|\d{1,2}[.)])\s+/.test(l0)||/^\d{1,2}[.)]/.test(l0)||/^(s[eé]ries?|sets?|repeti|reps?)\b|^\d{1,2}\s*(x|×|s[eé]ries?|sets?)/i.test(proxima(k))||IA_COMPOSTO.test(nk(nome))||IA_TEMPO.test(nk(nome))||media(nome))){const e=iaEx(nome,null,null,null,'');if(e){cur.ex.push(e);pend=e}}
  }
  out.treinos=out.treinos.filter(t=>t.ex.length);
  out.treinos.forEach((t,i)=>{if(!t.nome)t.nome='Treino '+LETRAS[i];t.ex.forEach(e=>{if(e.semSeries)out.avisos.push(`“${e.n}” veio sem séries e repetições. Confira os valores sugeridos.`);delete e.semSeries})});
