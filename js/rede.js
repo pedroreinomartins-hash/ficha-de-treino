@@ -1,0 +1,267 @@
+/* Rede: vínculo aluno–Personal com aceite, termos/consentimento, perfil público do Personal,
+   academias e busca. Carregado antes de app.js; só define funções e trata cliques próprios. */
+const TERMOS_V='2026-11';
+const CONSENT='Autorizo este Personal a acessar minhas fichas, treinos, cargas, frequência, recados e registros de dor e esforço, para acompanhar meu treinamento. Posso encerrar o acompanhamento a qualquer momento em Meu perfil.';
+const ESPEC=['Hipertrofia','Emagrecimento','Reabilitação e lesões','Iniciantes','Idosos','Gestantes','Força','Funcional','Mobilidade','Corrida','Condicionamento'];
+const UFS='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+const MODS={presencial:'Presencial',online:'Online',ambos:'Presencial e online'};
+const emailMe=()=>(fbAuth?.currentUser?.email||'').toLowerCase();
+const verificado=()=>!!fbAuth?.currentUser?.emailVerified;
+const vincs=()=>S.vinculos||[];
+const pub=pid=>(S.pubs||[]).find(x=>x.id===pid)||(S.personais||[]).find(x=>x.id===pid)||(pid===S.me&&S.pdoc?{...S.pdoc,id:S.me}:null);
+const acad=id=>(S.academias||[]).find(a=>a.id===id);
+async function upd(c,id,patch){const o=(S[c]||[]).find(x=>x.id===id);if(o)Object.assign(o,patch);await fdb.collection(c).doc(id).update(patch)}
+async function setDoc(c,o){const arr=S[c]||(S[c]=[]);const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);await fdb.collection(c).doc(o.id).set(clone(o))}
+const crefTxt=x=>x?.cref?'CREF '+x.cref:'';
+function selo(x){if(!x?.cref)return '';return `<span class="selo${x.crefVerificado?' ok':''}" title="${x.crefVerificado?'CREF conferido pela plataforma':'CREF informado pelo profissional'}">${x.crefVerificado?'✓ ':''}${esc(crefTxt(x))}</span>`}
+const errMsg=e=>e?.code==='permission-denied'?'Operação não permitida. Recarregue o app e tente de novo.':(e?.message||String(e));
+
+/* ---------- Vínculo: lado do aluno ---------- */
+async function solicitar(pid,via){
+ if(pid===S.me)throw new Error('Você não pode solicitar acompanhamento a si mesmo.');
+ const ja=vincs().find(v=>v.alunoId===S.me&&v.personalId===pid&&v.iniciadoPor!=='gestor');
+ if(ME()?.personalId===pid)throw new Error('Este já é o seu Personal.');
+ if(ja&&ja.status==='pendente')throw new Error('Já existe uma solicitação pendente com este Personal.');
+ const p=pub(pid)||{};
+ const base={alunoId:S.me,alunoEmail:emailMe(),alunoNome:ME().nome,personalId:pid,personalNome:p.nome||nomeP(pid)||'Personal',status:'pendente',iniciadoPor:'aluno',criado:Date.now(),respondido:null,via};
+ if(ja&&ja.status!=='ativo')await setDoc('vinculos',{...ja,...base});else await setDoc('vinculos',{id:uid('v'),...base});
+ return base.personalNome}
+async function vincular(code){code=String(code||'').trim().toUpperCase();if(!code)throw new Error('Informe o código do Personal.');
+ let c;try{c=await fdb.collection('convites').doc(code).get()}catch(e){throw new Error('Não foi possível verificar o código. Confira a conexão.')}
+ if(!c.exists)throw new Error('Código não encontrado. Confira com o seu Personal.');
+ return solicitar(c.data().personalId,'codigo')}
+async function aplicarVinculo(vid,pid){const p=ME();p.personalId=pid;p.vinculoId=vid;p.convite='';await putNow('perfis',p);restamp(S.me)}
+async function alunoAceita(v){
+ const outros=vincs().filter(x=>x.alunoId===S.me&&x.status==='ativo'&&x.id!==v.id);
+ await setDoc('vinculos',{...v,alunoId:S.me,alunoNome:ME().nome,alunoEmail:emailMe(),status:'ativo',respondido:Date.now(),consentimento:{versao:TERMOS_V,em:Date.now(),texto:CONSENT}});
+ for(const o of outros)await upd('vinculos',o.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'aluno'});
+ await aplicarVinculo(v.id,v.personalId)}
+async function alunoEncerra(){const p=ME();const v=vincs().find(x=>x.id===p.vinculoId)||vincs().find(x=>x.alunoId===S.me&&x.status==='ativo');
+ if(v&&v.status==='ativo')await upd('vinculos',v.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'aluno'});
+ p.personalId='';p.vinculoId='';p.convite='';await putNow('perfis',p);restamp(S.me)}
+async function desvincular(){return alunoEncerra()}
+let syncing=false;
+async function syncVinculo(){if(S.p||syncing||!fdb)return;const p=ME();if(!p||!p.aceite)return;syncing=true;
+ try{const ativos=vincs().filter(v=>v.alunoId===S.me&&v.status==='ativo').sort((a,b)=>(b.respondido||0)-(a.respondido||0));const v=ativos[0];
+  if(v&&(p.personalId!==v.personalId||p.vinculoId!==v.id)){
+   if(!S.g||!p.personalId||p.vinculoId){for(const o of ativos.slice(1))await upd('vinculos',o.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'aluno'});
+    await aplicarVinculo(v.id,v.personalId);toast(v.personalNome+' agora acompanha seus treinos.')}}
+  else if(!v&&p.personalId&&p.vinculoId){const cur=vincs().find(x=>x.id===p.vinculoId);if(cur&&cur.status!=='ativo'){p.personalId='';p.vinculoId='';await putNow('perfis',p);restamp(S.me)}}
+ }catch(e){console.warn('sync vinculo',e)}syncing=false;soft()}
+
+/* ---------- Vínculo: lado do Personal e do gestor ---------- */
+async function convidarEmail(email,nome){email=String(email||'').trim().toLowerCase();
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new Error('Informe um e-mail válido.');
+ if(vincs().some(v=>v.personalId===S.me&&v.status==='pendente'&&v.alunoEmail===email))throw new Error('Já existe um convite pendente para este e-mail.');
+ await setDoc('vinculos',{id:uid('v'),alunoId:'',alunoEmail:email,alunoNome:(nome||'').trim()||email,personalId:S.me,personalNome:ME().nome,status:'pendente',iniciadoPor:'personal',criado:Date.now(),respondido:null,via:'email'})}
+async function personalEncerra(aid){
+ const fs=fichasDe(aid).filter(f=>f.personalId===S.me),ss=sessDe(aid).filter(s=>s.personalId===S.me);
+ for(const v of vincs().filter(x=>x.alunoId===aid&&x.personalId===S.me&&x.status==='ativo'))await upd('vinculos',v.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'personal'});
+ if(perfil(aid)?.personalId===S.me){await fdb.collection('perfis').doc(aid).update({personalId:'',convite:'',vinculoId:''});
+  await Promise.all([...fs.map(f=>fdb.collection('fichas').doc(f.id).update({personalId:''})),...ss.map(s=>fdb.collection('sessions').doc(s.id).update({personalId:''}))])}}
+async function transferir(aid,pid){const p=perfil(aid);if(!p)return;
+ for(const v of vincs().filter(x=>x.alunoId===aid&&x.status==='ativo'))await upd('vinculos',v.id,{status:'encerrado',encerrado:Date.now(),encerradoPor:'gestor'});
+ let vid='';if(pid){vid=uid('v');await setDoc('vinculos',{id:vid,alunoId:aid,alunoEmail:(p.email||'').toLowerCase(),alunoNome:p.nome,personalId:pid,personalNome:nomeP(pid)||'Personal',status:'ativo',iniciadoPor:'gestor',criado:Date.now(),respondido:Date.now(),via:'gestor'})}
+ p.personalId=pid;p.vinculoId=vid;p.convite='';put('perfis',p);restamp(aid)}
+async function criarAlunoPeloPersonal(nome,email,senha){
+ const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(CFG,'cadastro');
+ const cred=await app2.auth().createUserWithEmailAndPassword(email,senha);const id=cred.user.uid;try{await cred.user.sendEmailVerification()}catch(e){}await app2.auth().signOut();
+ const p={id,nome,email,papel:'aluno',personalId:'',ativo:true,ativa:null,criado:Date.now()};await setDoc('perfis',p);
+ if(S.p)await setDoc('vinculos',{id:uid('v'),alunoId:id,alunoEmail:email.toLowerCase(),alunoNome:nome,personalId:S.me,personalNome:ME().nome,status:'pendente',iniciadoPor:'personal',criado:Date.now(),respondido:null,via:'cadastro'});
+ return p}
+
+/* ---------- Telas: aceite de termos ---------- */
+function viewTermos(){return `<main class="wrap" style="max-width:520px"><header style="padding-top:6vh"><div class="eyebrow">Antes de começar</div><h1>Termos e privacidade</h1></header>
+ <section class="panel"><p style="margin:0">Para usar o app, leia e aceite os documentos abaixo. Em resumo:</p>
+ <ul class="small" style="margin:0;padding-left:18px;display:grid;gap:6px"><li>Seus treinos e registros de dor e esforço são <b>dados de saúde</b> e ficam visíveis só para você e para o Personal que <b>você autorizar</b>.</li><li>Você pode encerrar o acompanhamento de um Personal e excluir sua conta quando quiser.</li><li>Alunos não aparecem em buscas.</li></ul>
+ <div class="row" style="gap:16px;flex-wrap:wrap"><a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a></div>
+ <label class="check"><input type="checkbox" id="tm-ok">Li e aceito os Termos de Uso e a Política de Privacidade.</label>
+ ${S.tmErr?`<div class="note bad">${esc(S.tmErr)}</div>`:''}<button class="btn primary big" data-act="tmok">Aceitar e continuar</button><button class="btn ghost" data-act="logout">Sair</button></section></main>`}
+
+/* ---------- Telas: Meu perfil ---------- */
+function verifBox(){const u=fbAuth?.currentUser;if(!u||u.emailVerified)return '';
+ return `<div class="note warn">Confirme seu e-mail para receber convites de Personais enviados para ${esc(u.email)}. <span class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="vfsend">Reenviar confirmação</button><button class="btn sm ghost" data-act="vfok">Já confirmei</button></span></div>`}
+function convitesRecebidos(){return vincs().filter(v=>v.status==='pendente'&&v.iniciadoPor==='personal'&&(v.alunoId===S.me||(!v.alunoId&&v.alunoEmail===emailMe())))}
+function cardConvite(v){const x=pub(v.personalId)||{nome:v.personalNome};const ck='cs-'+v.id;
+ return `<div class="form" style="gap:10px"><div class="row">${avatar({id:v.personalId,nome:v.personalNome,papel:'aluno'},'s')}<div class="grow"><b>${esc(v.personalNome)}</b> quer acompanhar seus treinos ${selo(x)}</div></div>
+ <div class="small muted">${esc(CONSENT)}</div><label class="check"><input type="checkbox" id="${ck}">Li e autorizo</label>
+ <div class="nav2"><button class="btn ghost" data-act="vrec" data-v="${v.id}">Recusar</button><button class="btn primary" data-act="vace" data-v="${v.id}">Aceitar</button></div></div>`}
+function meuPersonalBox(){const p=ME()||{};const P=S.pf||{};const C=S.conf;
+ const at=p.personalId?(pub(p.personalId)||{nome:nomeP(p.personalId)}):null;
+ const rec=convitesRecebidos();const env=vincs().filter(v=>v.alunoId===S.me&&v.status==='pendente'&&v.iniciadoPor==='aluno');
+ return `<section class="panel"><div class="eyebrow">Meu Personal</div>
+  ${at?`<div class="row">${avatar({id:p.personalId,nome:at.nome||'P',papel:'aluno'},'s')}<div class="grow"><b>${esc(at.nome||'Personal')}</b> ${selo(at)}</div></div><div class="small muted">Acompanha suas fichas, treinos e evolução.</div>
+   ${C==='desv'?`<div class="miniconf"><span class="grow">Encerrar o acompanhamento? O Personal deixa de ver seus dados.</span><button class="btn sm danger" data-act="pfdesv">Encerrar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn sm ghost" style="align-self:flex-start" data-act="conf" data-v="desv">Encerrar acompanhamento</button>`}`
+   :'<div class="small muted">Você ainda não tem um Personal acompanhando seus treinos.</div>'}
+  ${rec.map(cardConvite).join('')}
+  ${env.map(v=>`<div class="row small" style="gap:8px"><span class="grow">Solicitação enviada a <b>${esc(v.personalNome)}</b> · aguardando aceite</span><button class="btn sm ghost" data-act="vcan" data-v="${v.id}">Cancelar</button></div>`).join('')}
+  ${P.err?`<div class="note bad">${esc(P.err)}</div>`:''}${P.ok?`<div class="note good">${esc(P.ok)}</div>`:''}
+  <button class="btn primary" data-act="tab" data-v="busca">Encontrar um Personal</button>
+  <div class="field"><label class="lbl" for="pf-cod">Tenho o código do Personal</label><div class="row" style="gap:8px"><input id="pf-cod" class="txt grow" autocapitalize="characters" value="${esc(P.cod||'')}" placeholder="Ex.: RAFA27"><button class="btn ghost" data-act="pfvinc" ${P.busy?'disabled':''}>Solicitar</button></div></div>
+ </section>`}
+function viewPerfil(){const p=ME()||{nome:'',email:''};
+ const head=`<section class="panel"><div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div>${verifBox()}</section>`;
+ const corpo=S.p&&!S.g?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>${perfilPublicoForm()}`:meuPersonalBox();
+ return page(S.g?'Gestor':S.p?'Personal':'Aluno','Meu perfil',`${head}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><button class="btn danger" data-act="logout">Sair da conta</button>`)}
+
+/* ---------- Perfil público do Personal ---------- */
+function ppDraft(){if(!S.pp){const d=S.pdoc||{};const m=String(d.cref||'').match(/^(\d+)-?([GP])\/?([A-Z]{2})$/)||[];
+  S.pp={publico:!!d.publico,bio:d.bio||'',especialidades:[...(d.especialidades||[])],cidade:d.cidade||'',uf:d.uf||'SP',bairros:(d.bairros||[]).join(', '),academias:[...(d.academias||[])],modalidade:d.modalidade||'presencial',faixaPreco:d.faixaPreco||'',contato:d.contato||'',crefNum:m[1]||'',crefCat:m[2]||'G',crefUF:m[3]||'SP'}}return S.pp}
+function perfilPublicoForm(){const d=ppDraft();const ac=(S.academias||[]).filter(a=>a.aprovada||a.sugeridaPor===S.me).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+ const x={...S.pdoc,cref:d.crefNum?crefFmt(d):''};
+ return `<section class="panel"><div class="eyebrow">Perfil público</div><div class="small muted">É o que os alunos veem na busca. Só aparece se você marcar a opção abaixo.</div>
+  <label class="check"><input type="checkbox" data-pp="publico" ${d.publico?'checked':''}>Aparecer na busca de Personais</label>
+  <div class="field"><label class="lbl" for="pp-bio">Apresentação</label><textarea id="pp-bio" class="txt" data-pp="bio" maxlength="500" placeholder="Formação, experiência e como você trabalha">${esc(d.bio)}</textarea></div>
+  <div class="field"><span class="lbl">Especialidades</span><div class="chips">${ESPEC.map(e=>`<button type="button" class="chipb ${d.especialidades.includes(e)?'on':''}" data-act="ppesp" data-v="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>
+  <div class="grid2"><div class="field"><label class="lbl" for="pp-cid">Cidade</label><input id="pp-cid" class="txt" data-pp="cidade" value="${esc(d.cidade)}" placeholder="Campinas"></div><div class="field"><label class="lbl" for="pp-uf">UF</label><select id="pp-uf" data-pp="uf">${UFS.map(u=>`<option ${d.uf===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="field"><label class="lbl" for="pp-bai">Bairros onde atende (separe por vírgula)</label><input id="pp-bai" class="txt" data-pp="bairros" value="${esc(d.bairros)}" placeholder="Cambuí, Taquaral"></div>
+  <div class="field"><span class="lbl">Modalidade</span><div class="seg">${Object.entries(MODS).map(([k,l])=>`<button type="button" data-act="ppmod" data-v="${k}" class="${d.modalidade===k?'on':''}">${l}</button>`).join('')}</div></div>
+  <div class="field"><span class="lbl">Academias onde atende</span>${ac.length?ac.map(a=>`<label class="check"><input type="checkbox" data-ppac="${a.id}" ${d.academias.includes(a.id)?'checked':''}>${esc(a.nome)} <span class="small muted">· ${esc(a.bairro||'')}${a.aprovada?'':' · aguardando aprovação'}</span></label>`).join(''):'<div class="small muted">Nenhuma academia cadastrada ainda.</div>'}
+   ${academiaForm()}</div>
+  <div class="grid2"><div class="field"><label class="lbl" for="pp-preco">Faixa de preço (opcional)</label><input id="pp-preco" class="txt" data-pp="faixaPreco" value="${esc(d.faixaPreco)}" placeholder="R$ 80 a 120 por aula"></div><div class="field"><label class="lbl" for="pp-cont">Contato (opcional)</label><input id="pp-cont" class="txt" data-pp="contato" value="${esc(d.contato)}" placeholder="@instagram ou WhatsApp"></div></div>
+  <div class="field"><span class="lbl">CREF (opcional · exibe o selo no perfil)</span><div class="grid3"><input class="txt" data-pp="crefNum" inputmode="numeric" maxlength="6" value="${esc(d.crefNum)}" placeholder="Número" aria-label="Número do CREF"><select data-pp="crefCat" aria-label="Categoria"><option value="G" ${d.crefCat==='G'?'selected':''}>G</option><option value="P" ${d.crefCat==='P'?'selected':''}>P</option></select><select data-pp="crefUF" aria-label="UF do CREF">${UFS.map(u=>`<option ${d.crefUF===u?'selected':''}>${u}</option>`).join('')}</select></div>
+   <div class="small muted">${x.cref?'Prévia: '+selo(x):'Sem CREF, o perfil aparece sem selo.'}</div></div>
+  ${S.ppMsg?`<div class="note ${S.ppMsg.c}">${esc(S.ppMsg.t)}</div>`:''}
+  <button class="btn primary" data-act="ppsave">Salvar perfil público</button></section>`}
+const crefFmt=d=>`${String(d.crefNum).replace(/\D/g,'').padStart(6,'0')}-${d.crefCat}/${d.crefUF}`;
+async function salvarPerfilPublico(){const d=ppDraft();
+ if(d.publico&&(!d.cidade.trim()||!d.uf))throw new Error('Para aparecer na busca, informe cidade e UF.');
+ const num=String(d.crefNum||'').replace(/\D/g,'');if(num&&(num.length<3||num.length>6))throw new Error('O número do CREF deve ter de 3 a 6 dígitos.');
+ const cref=num?crefFmt(d):'';const old=S.pdoc||{};
+ const patch={publico:!!d.publico,bio:d.bio.trim(),especialidades:d.especialidades,cidade:d.cidade.trim(),uf:d.uf,bairros:d.bairros.split(',').map(s=>s.trim()).filter(Boolean),academias:d.academias,modalidade:d.modalidade,faixaPreco:d.faixaPreco.trim(),contato:d.contato.trim(),cref,crefVerificado:cref===(old.cref||'')?!!old.crefVerificado:false,nome:ME().nome,atualizado:Date.now()};
+ await fdb.collection('personais').doc(S.me).update(patch);S.pdoc={...old,...patch}}
+
+/* ---------- Academias ---------- */
+function academiaForm(){const A=S.ac;
+ if(!A)return `<button type="button" class="btn sm ghost" style="align-self:flex-start" data-act="acopen">+ ${S.g?'Cadastrar':'Sugerir'} academia</button>`;
+ return `<div class="form" style="margin-top:6px"><h3>${S.g?'Nova academia':'Sugerir academia'}</h3>
+  <div class="field"><label class="lbl" for="ac-nome">Nome</label><input id="ac-nome" class="txt" data-ac="nome" value="${esc(A.nome||'')}" placeholder="Ex.: Academia Central"></div>
+  <div class="field"><label class="lbl" for="ac-cep">CEP</label><div class="row" style="gap:8px"><input id="ac-cep" class="txt grow" data-ac="cep" inputmode="numeric" maxlength="9" value="${esc(A.cep||'')}" placeholder="00000-000"><button type="button" class="btn ghost" data-act="accep">Buscar</button></div></div>
+  <div class="field"><label class="lbl" for="ac-end">Endereço</label><input id="ac-end" class="txt" data-ac="endereco" value="${esc(A.endereco||'')}"></div>
+  <div class="grid2"><div class="field"><label class="lbl" for="ac-num">Número</label><input id="ac-num" class="txt" data-ac="numero" value="${esc(A.numero||'')}"></div><div class="field"><label class="lbl" for="ac-bai">Bairro</label><input id="ac-bai" class="txt" data-ac="bairro" value="${esc(A.bairro||'')}"></div></div>
+  <div class="grid2"><div class="field"><label class="lbl" for="ac-cid">Cidade</label><input id="ac-cid" class="txt" data-ac="cidade" value="${esc(A.cidade||'')}"></div><div class="field"><label class="lbl" for="ac-uf">UF</label><select id="ac-uf" data-ac="uf">${UFS.map(u=>`<option ${(A.uf||'SP')===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  ${A.err?`<div class="note bad">${esc(A.err)}</div>`:''}${S.g?'':'<div class="small muted">A academia aparece na busca depois da aprovação do gestor.</div>'}
+  <div class="nav2"><button type="button" class="btn ghost" data-act="accancel">Cancelar</button><button type="button" class="btn primary" data-act="acsave">${S.g?'Cadastrar':'Enviar sugestão'}</button></div></div>`}
+async function buscarCep(){const A=S.ac;const cep=String(A.cep||'').replace(/\D/g,'');if(cep.length!==8){A.err='O CEP deve ter 8 dígitos.';return}
+ try{const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');const j=await r.json();if(j.erro){A.err='CEP não encontrado.';return}
+  Object.assign(A,{endereco:j.logradouro||A.endereco,bairro:j.bairro||A.bairro,cidade:j.localidade||A.cidade,uf:j.uf||A.uf,err:''})}catch(e){A.err='Não foi possível consultar o CEP agora. Preencha manualmente.'}}
+async function salvarAcademia(){const A=S.ac;if(!(A.nome||'').trim()||!(A.cidade||'').trim())throw new Error('Informe ao menos o nome e a cidade.');
+ const a={id:uid('a'),nome:A.nome.trim(),cep:String(A.cep||'').replace(/\D/g,''),endereco:(A.endereco||'').trim(),numero:(A.numero||'').trim(),bairro:(A.bairro||'').trim(),cidade:A.cidade.trim(),uf:A.uf||'SP',aprovada:!!S.g,sugeridaPor:S.me,criado:Date.now()};
+ await setDoc('academias',a);if(S.p&&S.pp&&!S.pp.academias.includes(a.id))S.pp.academias.push(a.id);return a}
+function gestaoAcademias(){const C=S.conf;const l=[...(S.academias||[])].sort((a,b)=>(a.aprovada?1:0)-(b.aprovada?1:0)||a.nome.localeCompare(b.nome,'pt'));
+ return `${academiaForm()}${l.map(a=>{const n=(S.personais||[]).filter(x=>(x.academias||[]).includes(a.id)).length;const k='delac:'+a.id;
+  return `<section class="panel" style="gap:8px"><div class="row"><div class="grow"><h3>${esc(a.nome)}</h3><div class="small muted">${esc([a.endereco&&(a.endereco+(a.numero?', '+a.numero:'')),a.bairro,a.cidade&&(a.cidade+'/'+a.uf)].filter(Boolean).join(' · '))}</div><div class="small muted">${n} Personal${n===1?'':'s'} · sugerida por ${esc(nomeP(a.sugeridaPor)||perfil(a.sugeridaPor)?.nome||'—')}</div></div><span class="chip ${a.aprovada?'on':''}">${a.aprovada?'Aprovada':'Pendente'}</span></div>
+  ${C===k?`<div class="miniconf"><span class="grow">Excluir esta academia?</span><button class="btn sm danger" data-act="acdel" data-v="${a.id}">Excluir</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<div class="nav2">${a.aprovada?'<span></span>':`<button class="btn primary" data-act="acapr" data-v="${a.id}">Aprovar</button>`}<button class="btn danger" data-act="conf" data-v="${k}">Excluir</button></div>`}</section>`}).join('')||'<div class="empty">Nenhuma academia cadastrada.</div>'}`}
+
+/* ---------- Busca de Personais ---------- */
+function viewBusca(){const B=S.busca||(S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:''});
+ const todos=((S.g?S.personais:S.pubs)||[]).filter(x=>x.publico&&x.id!==S.me);
+ const cidades=[...new Set(todos.map(x=>x.cidade&&x.cidade+'/'+x.uf).filter(Boolean))].sort();
+ const acs=(S.academias||[]).filter(a=>a.aprovada&&(!B.cidade||a.cidade+'/'+a.uf===B.cidade)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+ const bq=nk(B.bairro||'');
+ const res=todos.filter(x=>(!B.cidade||x.cidade+'/'+x.uf===B.cidade)&&(!bq||(x.bairros||[]).some(b=>nk(b).includes(bq)))&&(!B.acad||(x.academias||[]).includes(B.acad))&&(!B.esp||(x.especialidades||[]).includes(B.esp))&&(!B.mod||x.modalidade===B.mod||x.modalidade==='ambos'))
+  .sort((a,b)=>(b.cref?1:0)-(a.cref?1:0)||(a.nome||'').localeCompare(b.nome||'','pt'));
+ const meu=ME()?.personalId;
+ const card=x=>{const v=vincs().find(y=>y.alunoId===S.me&&y.personalId===x.id&&y.status==='pendente');const ac=(x.academias||[]).map(acad).filter(a=>a&&a.aprovada);
+  return `<section class="panel" style="gap:10px"><div class="row">${avatar({id:x.id,nome:x.nome||'P',papel:'aluno'})}<div class="grow"><h2>${esc(x.nome||'Personal')}</h2><div>${selo(x)}</div></div></div>
+   <div class="small muted">${esc([x.cidade&&x.cidade+'/'+x.uf,(x.bairros||[]).join(', '),MODS[x.modalidade]].filter(Boolean).join(' · '))}</div>
+   ${(x.especialidades||[]).length?`<div class="chips">${x.especialidades.map(e=>`<span class="chipb">${esc(e)}</span>`).join('')}</div>`:''}
+   ${x.bio?`<div class="small">${esc(x.bio)}</div>`:''}
+   ${ac.length?`<div class="small">Academias: ${ac.map(a=>`<button class="lnk" data-act="bacad" data-v="${a.id}">${esc(a.nome)}</button>`).join(', ')}</div>`:''}
+   ${x.faixaPreco||x.contato?`<div class="small muted">${esc([x.faixaPreco,x.contato].filter(Boolean).join(' · '))}</div>`:''}
+   ${S.p&&!S.g?'':meu===x.id?'<span class="chip on" style="align-self:flex-start">Seu Personal</span>':v?`<div class="row small" style="gap:8px"><span class="grow">Solicitação enviada · aguardando aceite</span><button class="btn sm ghost" data-act="vcan" data-v="${v.id}">Cancelar</button></div>`:`<button class="btn primary" data-act="bsol" data-v="${x.id}">Solicitar acompanhamento</button>`}</section>`};
+ const sel=(k,lab,opts)=>`<select data-bs="${k}" aria-label="${lab}"><option value="">${lab}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${B[k]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+ return page('Busca','Encontrar um Personal',`<section class="panel" style="gap:8px">${sel('cidade','Todas as cidades',cidades.map(c=>[c,c]))}
+  <input class="txt" data-bs="bairro" value="${esc(B.bairro)}" placeholder="Bairro" aria-label="Bairro">
+  ${sel('acad','Todas as academias',acs.map(a=>[a.id,a.nome+(a.bairro?' · '+a.bairro:'')]))}
+  <div class="grid2">${sel('esp','Especialidade',ESPEC.map(e=>[e,e]))}${sel('mod','Modalidade',Object.entries(MODS).filter(([k])=>k!=='ambos'))}</div>
+  ${Object.values(B).some(Boolean)?'<button class="btn sm ghost" data-act="bclear">Limpar filtros</button>':''}</section>
+  ${S.bMsg?`<div class="note ${S.bMsg.c}">${esc(S.bMsg.t)}</div>`:''}
+  <div class="eyebrow">${res.length} Personal${res.length===1?'':'s'} encontrado${res.length===1?'':'s'}</div>
+  ${res.map(card).join('')||'<div class="empty">Nenhum Personal com esses filtros. Tente ampliar a busca.</div>'}`,{back:'perfil'})}
+
+/* ---------- Painel do Personal com solicitações ---------- */
+function solicitacoesBox(){const meus=vincs().filter(v=>v.personalId===S.me);const I=S.inv;
+ const rec=meus.filter(v=>v.status==='pendente'&&v.iniciadoPor==='aluno'),env=meus.filter(v=>v.status==='pendente'&&v.iniciadoPor==='personal');
+ const aguard=meus.filter(v=>v.status==='ativo'&&!alunos(true).some(a=>a.id===v.alunoId));
+ const conv=I?`<section class="form"><h3>Convidar aluno</h3><div class="small muted">O aluno vê o convite ao entrar no app com este e-mail e decide se aceita.</div>
+  <div class="field"><label class="lbl" for="inv-email">E-mail do aluno</label><input id="inv-email" class="txt" type="email" data-inv="email" value="${esc(I.email||'')}"></div>
+  <div class="field"><label class="lbl" for="inv-nome">Nome (opcional)</label><input id="inv-nome" class="txt" data-inv="nome" value="${esc(I.nome||'')}"></div>
+  ${I.err?`<div class="note bad">${esc(I.err)}</div>`:''}<div class="nav2"><button class="btn ghost" data-act="invcancel">Cancelar</button><button class="btn primary" data-act="invsend">Enviar convite</button></div></section>`:'';
+ return `${S.vMsg?`<div class="note ${S.vMsg.c}">${esc(S.vMsg.t)}</div>`:''}
+  ${rec.length?`<section class="panel"><div class="eyebrow">Solicitações de alunos</div>${rec.map(v=>`<div class="row" style="gap:8px">${avatar({id:v.alunoId,nome:v.alunoNome,papel:'aluno'},'s')}<div class="grow"><b>${esc(v.alunoNome)}</b><div class="small muted">${v.via==='codigo'?'pelo seu código':'pela busca'} · ${ddmm(v.criado)}</div></div></div><div class="nav2"><button class="btn ghost" data-act="prec" data-v="${v.id}">Recusar</button><button class="btn primary" data-act="pace" data-v="${v.id}">Aceitar</button></div>`).join('')}</section>`:''}
+  ${aguard.length?`<div class="note good">${aguard.map(v=>esc(v.alunoNome)).join(', ')}: vínculo aceito. O aluno aparece aqui assim que abrir o app.</div>`:''}
+  ${env.length?`<section class="panel" style="gap:8px"><div class="eyebrow">Convites enviados</div>${env.map(v=>`<div class="row small" style="gap:8px"><span class="grow"><b>${esc(v.alunoNome)}</b>${v.alunoNome!==v.alunoEmail?' · '+esc(v.alunoEmail):''} · aguardando aceite</span><button class="btn sm ghost" data-act="pcan" data-v="${v.id}">Cancelar</button></div>`).join('')}</section>`:''}
+  ${conv||`<button class="btn ghost" data-act="invopen">+ Convidar aluno por e-mail</button>`}`}
+function viewAlunos(){return page('Painel do Personal','Alunos',codigoCard()+solicitacoesBox()+alunosBody())}
+
+/* ---------- Gestão ---------- */
+function viewGestao(){const g=S.gsub;
+ const st=`<div class="subtabs">${[['alunos','Alunos'],['personais','Personais'],['academias','Academias'],['modelos','Modelos']].map(([k,l])=>`<button data-act="gsub" data-v="${k}" class="${g===k?'on':''}">${l}</button>`).join('')}</div>`;
+ let body;
+ if(g==='modelos')body=`<div class="small muted">Modelos do gestor ficam disponíveis para todos os Personais e alunos.</div>`+fichasList('modelos');
+ else if(g==='academias')body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}`+gestaoAcademias();
+ else if(g==='personais'){const C=S.conf;const cand=S.perfis.filter(p=>p.papel!=='personal'&&!S.personais.some(x=>x.id===p.id)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}
+  <section class="form"><h3>Liberar novo Personal</h3><div class="small muted">A pessoa precisa ter entrado no app ao menos uma vez.</div>
+  <select id="lp-sel" aria-label="Usuário"><option value="">Escolha o usuário</option>${cand.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.email?' · '+esc(p.email):''}</option>`).join('')}</select>
+  <button class="btn primary" data-act="lpgo">Liberar como Personal</button></section>
+  ${S.personais.map(x=>{const n=alunos(true).filter(a=>a.personalId===x.id).length;const k='rev:'+x.id;return `<section class="panel" style="gap:8px"><div class="row">${avatar({id:x.id,nome:x.nome,papel:'aluno'})}<div class="grow"><h2>${esc(x.nome)}</h2><div class="small muted">${n} aluno${n===1?'':'s'} · código <b class="num" style="color:var(--ink);font-size:16px">${esc(x.codigo||'')}</b> · ${x.publico?'na busca':'fora da busca'}</div><div>${selo(x)||'<span class="small muted">Sem CREF informado</span>'}</div></div></div>
+   ${x.cref?`<button class="btn sm ghost" style="align-self:flex-start" data-act="crefv" data-v="${x.id}">${x.crefVerificado?'Remover marcação de CREF conferido':'Marcar CREF como conferido'}</button>`:''}
+   ${C===k?(n?`<div class="note warn">Transfira os ${n} alunos antes de revogar (aba Alunos → aluno → Cadastro). <button class="btn sm ghost" data-act="conf" data-v="">Ok</button></div>`:`<div class="miniconf"><span class="grow">Revogar o acesso de Personal?</span><button class="btn sm danger" data-act="revgo" data-v="${x.id}">Revogar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`):`<div class="nav2"><button class="btn ghost" data-act="gfgo" data-v="${x.id}">Ver alunos</button><button class="btn danger" data-act="conf" data-v="${k}">Revogar acesso</button></div>`}</section>`}).join('')||'<div class="empty">Nenhum Personal liberado ainda.</div>'}`}
+ else body=alunosBody();
+ return page('Painel do gestor','Gestão',st+body)}
+
+/* ---------- Cartões da tela inicial do aluno ---------- */
+function semPersonal(){if(S.p&&!S.g)return '';const rec=convitesRecebidos();
+ if(rec.length)return `<button class="banner" data-act="tab" data-v="perfil"><span class="grow"><b>${esc(rec[0].personalNome)}</b> quer acompanhar seus treinos<br><span class="small">Toque para ver e responder</span></span><span>›</span></button>`;
+ if(ME()?.personalId||LS.get('ft4.semP',0))return '';
+ return `<section class="panel" style="gap:8px"><div class="eyebrow">Tem um Personal?</div><div class="small">Encontre um Personal na sua região ou informe o código dele para que acompanhe seus treinos.</div><div class="nav2"><button class="btn ghost" data-act="semPno">Agora não</button><button class="btn primary" data-act="tab" data-v="busca">Encontrar Personal</button></div></section>`}
+
+/* ---------- Entradas de formulário e cliques próprios ---------- */
+document.addEventListener('input',e=>{const el=e.target;
+ if(el.dataset.pp&&S.pp){S.pp[el.dataset.pp]=el.type==='checkbox'?el.checked:el.value}
+ if(el.dataset.ac&&S.ac)S.ac[el.dataset.ac]=el.value;
+ if(el.dataset.inv&&S.inv)S.inv[el.dataset.inv]=el.value;
+ if(el.dataset.bs==='bairro'&&S.busca){S.busca.bairro=el.value;clearTimeout(S._bt);S._bt=setTimeout(()=>{const pos=el.selectionStart;render();const n=document.querySelector('[data-bs=bairro]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}},350)}
+});
+document.addEventListener('change',e=>{const el=e.target;
+ if(el.dataset.pp&&S.pp){S.pp[el.dataset.pp]=el.type==='checkbox'?el.checked:el.value;if(el.dataset.pp.startsWith('cref'))render()}
+ if(el.dataset.ppac&&S.pp){const id=el.dataset.ppac,l=S.pp.academias;if(el.checked&&!l.includes(id))l.push(id);if(!el.checked)S.pp.academias=l.filter(x=>x!==id)}
+ if(el.dataset.ac&&S.ac)S.ac[el.dataset.ac]=el.value;
+ if(el.dataset.bs&&el.dataset.bs!=='bairro'&&S.busca){S.busca[el.dataset.bs]=el.value;if(el.dataset.bs==='cidade')S.busca.acad='';render()}
+});
+function run(p,ok,errKey){p.then(ok).catch(e=>{console.warn(e);const t=errMsg(e);if(errKey==='pf')S.pf={...(S.pf||{}),busy:false,err:t};else if(errKey==='v')S.vMsg={c:'bad',t};else if(errKey==='pp')S.ppMsg={c:'bad',t};else if(errKey==='ac'){S.ac&&(S.ac.err=t)}else if(errKey==='b')S.bMsg={c:'bad',t};else S.gmsg={c:'bad',t};render()})}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const v=b.dataset.v;
+ const V=id=>vincs().find(x=>x.id===id);
+ switch(b.dataset.act){
+  case 'tmok':{if(!$('#tm-ok')?.checked){S.tmErr='Marque a caixa para aceitar.';render();break}const p=ME();p.aceite={versao:TERMOS_V,em:Date.now()};S.tmErr='';run(putNow('perfis',p),()=>{render();syncVinculo()});break}
+  case 'vfsend':run(fbAuth.currentUser.sendEmailVerification(),()=>toast('E-mail de confirmação enviado.'),'pf');break;
+  case 'vfok':run(fbAuth.currentUser.reload().then(()=>fbAuth.currentUser.getIdToken(true)),()=>{if(verificado()){toast('E-mail confirmado.');onAuth(fbAuth.currentUser)}else toast('Ainda não consta a confirmação. Abra o link enviado ao seu e-mail.')},'pf');break;
+  case 'pfvinc':{S.pf={cod:$('#pf-cod')?.value||'',busy:true};render();run(vincular(S.pf.cod),n=>{S.pf={ok:`Solicitação enviada a ${n}. Assim que ele aceitar, passa a acompanhar seus treinos.`};render()},'pf');break}
+  case 'pfdesv':run(alunoEncerra(),()=>{S.conf=null;S.pf={ok:'Acompanhamento encerrado. O Personal não vê mais seus dados.'};render()},'pf');break;
+  case 'vace':{if(!$('#cs-'+v)?.checked){S.pf={err:'Marque “Li e autorizo” para aceitar o convite.'};render();break}run(alunoAceita(V(v)),()=>{S.pf={ok:'Convite aceito. Seu Personal já pode acompanhar seus treinos.'};render()},'pf');break}
+  case 'vrec':run(upd('vinculos',v,{status:'recusado',respondido:Date.now(),alunoId:S.me}),()=>{S.pf={ok:'Convite recusado.'};render()},'pf');break;
+  case 'vcan':run(upd('vinculos',v,{status:'cancelado',respondido:Date.now()}),()=>{S.pf={ok:'Solicitação cancelada.'};S.bMsg=null;render()},'pf');break;
+  case 'bsol':run(solicitar(v,'busca'),n=>{S.bMsg={c:'good',t:`Solicitação enviada a ${n}. Você será avisado quando ele aceitar.`};render()},'b');break;
+  case 'bacad':S.busca={...(S.busca||{}),acad:v};render();window.scrollTo(0,0);break;
+  case 'bclear':S.busca={cidade:'',bairro:'',acad:'',esp:'',mod:''};render();break;
+  case 'pace':run(upd('vinculos',v,{status:'ativo',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Solicitação aceita. O aluno aparece na sua lista assim que abrir o app.'};render()},'v');break;
+  case 'prec':run(upd('vinculos',v,{status:'recusado',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Solicitação recusada.'};render()},'v');break;
+  case 'pcan':run(upd('vinculos',v,{status:'cancelado',respondido:Date.now()}),()=>{S.vMsg={c:'good',t:'Convite cancelado.'};render()},'v');break;
+  case 'invopen':S.inv={email:'',nome:''};render();setTimeout(()=>$('#inv-email')?.focus(),0);break;
+  case 'invcancel':S.inv=null;render();break;
+  case 'invsend':run(convidarEmail(S.inv.email,S.inv.nome),()=>{S.vMsg={c:'good',t:`Convite enviado para ${S.inv.email}. O aluno vê o convite ao entrar no app com esse e-mail.`};S.inv=null;render()},'v');break;
+  case 'penc':run(personalEncerra(S.sel),()=>{S.conf=null;S.vMsg={c:'good',t:'Acompanhamento encerrado.'};go('alunos')},'v');break;
+  case 'ppesp':{const d=ppDraft();d.especialidades=d.especialidades.includes(v)?d.especialidades.filter(x=>x!==v):[...d.especialidades,v];render();break}
+  case 'ppmod':ppDraft().modalidade=v;render();break;
+  case 'ppsave':S.ppMsg=null;run(salvarPerfilPublico(),()=>{S.ppMsg={c:'good',t:ppDraft().publico?'Perfil salvo. Você já aparece na busca.':'Perfil salvo. Você não aparece na busca.'};render()},'pp');break;
+  case 'acopen':S.ac={uf:'SP'};render();setTimeout(()=>$('#ac-nome')?.focus(),0);break;
+  case 'accancel':S.ac=null;render();break;
+  case 'accep':buscarCep().then(render);break;
+  case 'acsave':run(salvarAcademia(),a=>{S.ac=null;const t=S.g?`Academia ${a.nome} cadastrada.`:`Sugestão de ${a.nome} enviada. Ela aparece na busca depois da aprovação.`;if(S.g)S.gmsg={c:'good',t};else S.ppMsg={c:'good',t:t+' Lembre de salvar o perfil público.'};render()},'ac');break;
+  case 'acapr':run(upd('academias',v,{aprovada:true}),()=>{S.gmsg={c:'good',t:'Academia aprovada.'};render()});break;
+  case 'acdel':run(fdb.collection('academias').doc(v).delete().then(()=>{S.academias=S.academias.filter(a=>a.id!==v)}),()=>{S.conf=null;S.gmsg={c:'good',t:'Academia excluída.'};render()});break;
+  case 'crefv':{const x=S.personais.find(y=>y.id===v);run(upd('personais',v,{crefVerificado:!x.crefVerificado}),()=>render());break}
+ }
+});

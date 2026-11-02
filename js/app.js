@@ -89,10 +89,10 @@ function normF(f){let ch=false;
  return f}
 function normS(s){s.letra=s.letra||s.treino||'A';s.fichaId=s.fichaId||'f-tendinite';s.treinoId=s.treinoId||s.letra;
  const ex={};for(const[k,r]of Object.entries(s.ex||{}))ex[k]={...r,n:r.n||LEGACY[k]||k};s.ex=ex;delete s.pending;delete s._p;return s}
-const NORM={perfis:normP,fichas:normF,sessions:normS};
+const NORM={perfis:normP,fichas:normF,sessions:normS,vinculos:x=>x,academias:x=>x,pubs:x=>x};
 
 /* ================= Estado ================= */
-const S={perfis:[],fichas:[],sessions:[],personais:[],pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
+const S={perfis:[],fichas:[],sessions:[],personais:[],vinculos:[],academias:[],pubs:[],pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
  sel:null,sub:'fichas',edit:null,back:'fichas',form:null,conf:null,newF:null,confirmEnd:false,confirmDel:null,
  chartEx:LS.get('ft.chartEx',''),evoF:'ativa',fb:null,fbv:null,cloud:false,ready:false,imp:null,vid:null,
  active:LS.get('ft4.active',null)};
@@ -110,7 +110,7 @@ function initFirebase(){
  fbAuth.onAuthStateChanged(onAuth);
 }
 async function onAuth(u){
- unsubs.forEach(f=>f());unsubs=[];if(modP.un)modP.un();modP={pid:null,un:null};for(const k in SRC)delete SRC[k];S.perfis=[];S.fichas=[];S.sessions=[];S.personais=[];
+ unsubs.forEach(f=>f());unsubs=[];if(modP.un)modP.un();modP={pid:null,un:null};for(const k in SRC)delete SRC[k];S.perfis=[];S.fichas=[];S.sessions=[];S.personais=[];S.vinculos=[];S.academias=[];S.pubs=[];S.pp=null;S.ac=null;S.inv=null;
  if(!u){S.me=null;S.g=false;S.p=false;S.ready=true;S.view='login';render();return}
  S.me=u.uid;S.ready=false;render();
  const uid=u.uid,C=c=>fdb.collection(c);
@@ -126,6 +126,11 @@ async function onAuth(u){
   listen('sessP','sessions',C('sessions').where('personalId','==',uid))}
  else{listen('me','perfis',C('perfis').doc(uid));listen('fichasMe','fichas',C('fichas').where('alunoId','==',uid));
   listen('globais','fichas',C('fichas').where('global','==',true));listen('sessMe','sessions',C('sessions').where('alunoId','==',uid))}
+ const em=(u.email||'').toLowerCase();
+ if(S.g){listen('vincG','vinculos',C('vinculos'));listen('acadG','academias',C('academias'))}
+ else{listen('acadOk','academias',C('academias').where('aprovada','==',true));listen('pubs','pubs',C('personais').where('publico','==',true));
+  if(S.p){listen('vincP','vinculos',C('vinculos').where('personalId','==',uid));listen('acadMinhas','academias',C('academias').where('sugeridaPor','==',uid))}}
+ if(!S.p||S.g){listen('vincA','vinculos',C('vinculos').where('alunoId','==',uid));if(u.emailVerified&&em)listen('vincE','vinculos',C('vinculos').where('alunoEmail','==',em))}
  if(!S.g)unsubs.push(C('personais').doc(uid).onSnapshot(d=>{S.pdoc=d.exists?d.data():null;if(S.ready&&d.exists!==S.p)onAuth(fbAuth.currentUser);else soft()},()=>{}));
  S.view=S.p&&!S.g?'alunos':(myActive()?'treino':'inicio');
 }
@@ -139,6 +144,7 @@ function listen(key,c,ref){unsubs.push(ref.onSnapshot(sn=>{
   const docs=sn.docs?sn.docs.filter(d=>d.exists!==false):(sn.exists?[sn]:[]);
   SRC[key]={c,docs:docs.map(d=>NORM[c]({...d.data(),id:d.id}))};S.cloud=!sn.metadata.fromCache;merge(c);
   if(key==='me')syncModP();
+  if(c==='vinculos'||key==='me')setTimeout(syncVinculo,0);
   if(!S.ready&&SRC[S.g?'perfis':'me']){S.ready=true;render()}else soft();
  },e=>{console.warn(key,e);if(!S.ready){S.ready=true;render()}}))}
 function stamp(c,o){
@@ -153,13 +159,6 @@ const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password'
 const authMsg=e=>AUTH_ERR[e?.code]||('Não foi possível concluir: '+(e?.message||e));
 async function putNow(c,o){stamp(c,o);const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);await fdb.collection(c).doc(o.id).set(clone(o))}
 function restamp(aid){fichasDe(aid).forEach(f=>put('fichas',f));sessDe(aid).forEach(x=>put('sessions',x))}
-async function vincular(code){code=String(code||'').trim().toUpperCase();if(!code)throw new Error('Informe o código do seu Personal.');
- let c;try{c=await fdb.collection('convites').doc(code).get()}catch(e){throw new Error('Não foi possível verificar o código. Confira a conexão.')}
- if(!c.exists)throw new Error('Código não encontrado. Confira com o seu Personal.');
- const pid=c.data().personalId;if(pid===S.me)throw new Error('Este é o seu próprio código de Personal.');
- const p=ME();p.personalId=pid;p.convite=code;await putNow('perfis',p);restamp(S.me);return pid}
-async function desvincular(){const p=ME();p.personalId='';p.convite='';await putNow('perfis',p);restamp(S.me)}
-function transferir(aid,pid){const p=perfil(aid);if(!p)return;p.personalId=pid;p.convite='';put('perfis',p);restamp(aid)}
 function novoCodigo(nome){const base=nk(nome).replace(/[^a-z]/g,'').toUpperCase().slice(0,4).padEnd(3,'X');const usados=new Set(S.personais.map(x=>x.codigo));
  for(let i=0;i<200;i++){const c=base+String(10+Math.floor(Math.random()*90));if(!usados.has(c))return c}return base+Date.now().toString(36).slice(-3).toUpperCase()}
 async function liberarPersonal(uid){const p=perfil(uid);const codigo=novoCodigo(p.nome);const b=fdb.batch();
@@ -170,11 +169,6 @@ async function revogarPersonal(uid){const x=S.personais.find(y=>y.id===uid);cons
 const pnCache={};
 function nomeP(pid){if(!pid)return '';const x=S.personais?.find(y=>y.id===pid);if(x)return x.nome;if(pid===S.me)return ME()?.nome||'';
  if(pnCache[pid]===undefined){pnCache[pid]='';fdb.collection('personais').doc(pid).get().then(d=>{pnCache[pid]=d.exists?d.data().nome:'';soft()}).catch(()=>{})}return pnCache[pid]||'seu Personal'}
-async function criarAlunoPeloPersonal(nome,email,senha){
- const app2=firebase.apps.find(a=>a.name==='cadastro')||firebase.initializeApp(CFG,'cadastro');
- const cred=await app2.auth().createUserWithEmailAndPassword(email,senha);const uid=cred.user.uid;await app2.auth().signOut();
- const p={id:uid,nome,email,papel:'aluno',personalId:S.p?S.me:'',ativo:true,ativa:null,criado:Date.now()};put('perfis',p);return p}
-
 /* ================= Consultas ================= */
 const perfil=id=>S.perfis.find(p=>p.id===id);
 const ME=()=>perfil(S.me);
@@ -236,7 +230,7 @@ const IC={
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
 function tabs(){const list=S.p&&!S.g?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']].concat(S.g?[['gestao','Gestão']]:[]);
- const home=S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:''};const cur=S.view in map?map[S.view]:S.view;
+ const home=S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:''};const cur=S.view in map?map[S.view]:S.view;
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
 function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
@@ -269,7 +263,7 @@ async function submitAuth(){const A=S.auth;A.email=($('#au-email')?.value||'').t
  if(A.mode==='criar'&&!A.nome.trim()){A.err='Informe seu nome.';render();return}
  A.busy=true;render();
  try{if(A.mode==='senha'){await fbAuth.sendPasswordResetEmail(A.email);A.ok='Link enviado. Confira sua caixa de entrada e o spam.'}
-  else if(A.mode==='criar')await fbAuth.createUserWithEmailAndPassword(A.email,senha);
+  else if(A.mode==='criar'){const cr=await fbAuth.createUserWithEmailAndPassword(A.email,senha);try{await cr.user.sendEmailVerification()}catch(e){}}
   else await fbAuth.signInWithEmailAndPassword(A.email,senha)}
  catch(e){A.err=authMsg(e)}
  A.busy=false;if(!S.me)render()}
@@ -303,7 +297,6 @@ function viewInicio(){
   <div class="row"><div class="grow"><div class="eyebrow">Esta semana</div><h2><span class="num">${wk}</span> de ${meta} treinos</h2></div><div class="small muted" style="text-align:right">Semana <b class="num" style="font-size:20px;color:var(--ink)">${pw}</b> de ${f.semanas||8}<br>do ciclo</div></div>
   <div class="week">${days}</div>
  </section>${recentP}`)}
-function semPersonal(){if(S.p||ME()?.personalId||LS.get('ft4.semP',0))return '';return `<section class="panel" style="gap:8px"><div class="eyebrow">Tem um Personal?</div><div class="small">Informe o código de convite dele para que ele acompanhe seus treinos e monte suas fichas.</div><div class="nav2"><button class="btn ghost" data-act="semPno">Agora não</button><button class="btn primary" data-act="tab" data-v="perfil">Informar código</button></div></section>`}
 function itemRow(s){const n=Object.values(s.ex||{}).reduce((a,r)=>a+r.sets.length,0);return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.treinoNome||'')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${Math.round(s.dur/60)} min</b><div class="small muted">${n} séries</div></div></div>`}
 
 /* ================= Lista de fichas (aluno, aluno visto pelo Personal, modelos) ================= */
@@ -489,7 +482,6 @@ function historico(aid){
  return `<section class="panel" style="gap:0">${list||'<div class="empty">Nenhum treino salvo ainda.</div>'}</section>`}
 
 /* ================= Personal ================= */
-function viewAlunos(){return page('Painel do Personal','Alunos',codigoCard()+alunosBody())}
 function codigoCard(){const c=S.pdoc?.codigo;if(!c)return '';return `<section class="panel" style="gap:6px"><div class="eyebrow">Seu código de convite</div><div class="row"><b class="num grow" style="font-size:34px;letter-spacing:.08em">${esc(c)}</b><button class="btn sm ghost" data-act="copycode" data-v="${esc(c)}">Copiar</button></div><div class="small muted">O aluno informa este código em Meu perfil para entrar na sua carteira.</div></section>`}
 function alunosBody(){
  const ws=weekStart(Date.now());let al=alunos(),inat=alunos(true).filter(p=>p.ativo===false);
@@ -523,41 +515,22 @@ function viewAluno(){
   <div class="small muted">E-mail de acesso: <b style="color:var(--ink)">${esc(p.email||'—')}</b></div>
   ${S.g?`<div class="field"><label class="lbl" for="tr-sel">Personal responsável</label><select id="tr-sel" data-ch="transf"><option value="">Sem Personal</option>${S.personais.filter(x=>x.id!==p.id).map(x=>`<option value="${x.id}" ${p.personalId===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select><div class="small muted">Ao trocar, fichas, treinos e histórico vão junto para o novo Personal.</div></div>`:`<div class="small muted">Personal responsável: <b style="color:var(--ink)">${esc(nomeP(p.personalId)||'—')}</b></div>`}
   ${p.email?`<button class="btn ghost" data-act="rpin">Enviar link para redefinir a senha</button>`:''}${S.cadMsg?`<div class="note good">${esc(S.cadMsg)}</div>`:''}
-  <button class="btn ${p.ativo===false?'primary':'danger'}" data-act="pativo">${p.ativo===false?'Reativar aluno':'Desativar aluno'}</button>
-  <div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos.</div></section>${importBox(p.id)}`}
+  ${S.p&&!S.g&&p.personalId===S.me?(C==='enc'?`<div class="miniconf"><span class="grow">Encerrar o acompanhamento de ${esc(p.nome)}? Você deixa de ver os dados dele.</span><button class="btn sm danger" data-act="penc">Encerrar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn danger" data-act="conf" data-v="enc">Encerrar acompanhamento</button>`):''}
+  ${S.g?`<button class="btn ${p.ativo===false?'primary':'danger'}" data-act="pativo">`:'<span hidden>'}${p.ativo===false?'Reativar aluno':'Desativar aluno'}${S.g?'</button>':'</span>'}
+  ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>${importBox(p.id)}`}
  const al=alertas(p.id);
  return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
-function viewGestao(){const g=S.gsub;
- const st=`<div class="subtabs">${[['alunos','Alunos'],['personais','Personais'],['modelos','Modelos']].map(([k,l])=>`<button data-act="gsub" data-v="${k}" class="${g===k?'on':''}">${l}</button>`).join('')}</div>`;
- let body;
- if(g==='modelos')body=`<div class="small muted">Modelos sem Personal ficam disponíveis para todos os Personais e alunos.</div>`+fichasList('modelos');
- else if(g==='personais'){const C=S.conf;const cand=S.perfis.filter(p=>p.papel!=='personal'&&!S.personais.some(x=>x.id===p.id)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
-  body=`${S.gmsg?`<div class="note ${S.gmsg.c}">${esc(S.gmsg.t)}</div>`:''}
-  <section class="form"><h3>Liberar novo Personal</h3><div class="small muted">A pessoa precisa ter entrado no app ao menos uma vez.</div>
-  <select id="lp-sel" aria-label="Usuário"><option value="">Escolha o usuário</option>${cand.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.email?' · '+esc(p.email):''}</option>`).join('')}</select>
-  <button class="btn primary" data-act="lpgo">Liberar como Personal</button></section>
-  ${S.personais.map(x=>{const n=alunos(true).filter(a=>a.personalId===x.id).length;const k='rev:'+x.id;return `<section class="panel" style="gap:8px"><div class="row">${avatar({id:x.id,nome:x.nome,papel:'aluno'})}<div class="grow"><h2>${esc(x.nome)}</h2><div class="small muted">${n} aluno${n===1?'':'s'} · código <b class="num" style="color:var(--ink);font-size:16px">${esc(x.codigo||'')}</b></div></div></div>
-   ${C===k?(n?`<div class="note warn">Transfira os ${n} alunos antes de revogar (aba Alunos → aluno → Cadastro). <button class="btn sm ghost" data-act="conf" data-v="">Ok</button></div>`:`<div class="miniconf"><span class="grow">Revogar o acesso de Personal?</span><button class="btn sm danger" data-act="revgo" data-v="${x.id}">Revogar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`):`<div class="nav2"><button class="btn ghost" data-act="gfgo" data-v="${x.id}">Ver alunos</button><button class="btn danger" data-act="conf" data-v="${k}">Revogar acesso</button></div>`}</section>`}).join('')||'<div class="empty">Nenhum Personal liberado ainda.</div>'}`}
- else body=alunosBody();
- return page('Painel do gestor','Gestão',st+body)}
-function viewPerfil(){const p=ME()||{nome:'',email:''};const P=S.pf||{};
- const vinc=S.p&&!S.g?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>`:`<section class="panel"><div class="eyebrow">Meu Personal</div>
-  ${p.personalId?`<div class="row">${avatar({id:p.personalId,nome:nomeP(p.personalId)||'P',papel:'aluno'},'s')}<b class="grow">${esc(nomeP(p.personalId))}</b></div><div class="small muted">Seu Personal acompanha suas fichas, treinos e evolução.</div>`:'<div class="small muted">Você ainda não está vinculado a um Personal. Peça o código de convite a ele.</div>'}
-  <div class="field"><label class="lbl" for="pf-cod">${p.personalId?'Trocar de Personal (novo código)':'Código de convite'}</label><input id="pf-cod" class="txt" autocapitalize="characters" value="${esc(P.cod||'')}" placeholder="Ex.: RAFA27"></div>
-  ${P.err?`<div class="note bad">${esc(P.err)}</div>`:''}${P.ok?`<div class="note good">${esc(P.ok)}</div>`:''}
-  <button class="btn primary" data-act="pfvinc" ${P.busy?'disabled':''}>Vincular</button>
-  ${p.personalId?(S.conf==='desv'?`<div class="miniconf"><span class="grow">Sair da carteira deste Personal? Ele deixa de ver seus dados.</span><button class="btn sm danger" data-act="pfdesv">Sair</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn sm ghost" data-act="conf" data-v="desv">Desvincular do Personal</button>`):''}</section>`;
- return page(S.g?'Gestor':S.p?'Personal':'Aluno','Meu perfil',`<section class="panel"><div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div></section>${vinc}<button class="btn danger" data-act="logout">Sair da conta</button>`)}
-
 /* ================= Render ================= */
 function render0(){
  if(!configOK)return viewConfig();
  if(!S.me)return S.ready?viewLogin():viewSplash();
  if(!S.ready)return viewSplash();
+ if(ME()&&!ME().aceite)return viewTermos();
  if(S.view==='login')S.view=S.p&&!S.g?'alunos':'inicio';
  if(S.view==='treino'&&!myActive())S.view='inicio';
  const v=S.view;
  if(v==='perfil')return viewPerfil();
+ if(v==='busca')return viewBusca();
  if(v==='aluno'&&isPT())return viewAluno();
  if(v==='ficha')return viewFicha();
  if(S.p&&!S.g){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));S.view='alunos';return viewAlunos()}
@@ -594,7 +567,7 @@ document.addEventListener('change',e=>{const el=e.target,ch=el.dataset.ch;
  if(el.dataset.nf&&S.newF)S.newF[el.dataset.nf]=el.value;
  if(!ch)return;
  if(ch==='meunome'){const p=ME(),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
- if(ch==='transf'){transferir(S.sel,el.value);toast('Personal responsável atualizado.');render();return}
+ if(ch==='transf'){transferir(S.sel,el.value).then(()=>{toast('Personal responsável atualizado.');render()}).catch(e=>toast('Não foi possível transferir: '+(e.message||e)));return}
  if(ch==='pnome'){const p=perfil(S.sel),v=el.value.trim();if(p&&v){p.nome=v;put('perfis',p);render()}return}
  const f=curFicha();if(!f)return;
  if(ch==='fnome'){const v=el.value.trim();if(v)f.nome=v}
@@ -622,8 +595,6 @@ document.addEventListener('click',e=>{
   case 'lpgo':{const id=$('#lp-sel')?.value;if(!id){S.gmsg={c:'bad',t:'Escolha o usuário que será Personal.'};render();break}
    liberarPersonal(id).then(c=>{S.gmsg={c:'good',t:`${perfil(id)?.nome} agora é Personal. Código de convite: ${c}. Peça para ele sair e entrar de novo no app.`};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível liberar: '+(e.message||e)};render()});break}
   case 'revgo':revogarPersonal(v).then(()=>{S.conf=null;S.gmsg={c:'good',t:'Acesso de Personal revogado.'};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível revogar: '+(e.message||e)};render()});break;
-  case 'pfvinc':{S.pf={cod:$('#pf-cod')?.value||'',busy:true};render();vincular(S.pf.cod).then(pid=>{S.pf={ok:'Pronto. Agora você está na carteira de '+(nomeP(pid)||'seu Personal')+'.'};render()}).catch(e=>{S.pf={cod:S.pf.cod,err:e.message};render()});break}
-  case 'pfdesv':desvincular().then(()=>{S.conf=null;S.pf={ok:'Você saiu da carteira do Personal.'};render()}).catch(e=>{S.pf={err:'Não foi possível concluir: '+(e.message||e)};render()});break;
   case 'impopen':S.imp={aid:v};render();break;
   case 'impcancel':S.imp=null;render();break;
   case 'impgo':{try{S.imp.ok=importar(S.imp.aid,$('#imp-txt').value);S.imp.err=''}catch(e){S.imp.err=e.message;S.imp.ok=''}render();break}

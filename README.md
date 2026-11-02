@@ -50,15 +50,26 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
    - campo: `nome`, tipo string, valor do nome do gestor.
 4. O gestor sai do app e entra de novo. Aparece a aba **Gestão**.
 
-### 5. Personais e alunos
+### 5. Personais, alunos e vínculo
 
-- **Liberar um Personal:** a pessoa entra no app uma vez. O gestor abre **Gestão → Personais**, escolhe o usuário e toca em **Liberar como Personal**. O app gera o código de convite do Personal (ex.: `RAFA27`).
-- **Aluno entrar na carteira:** o aluno abre **Meu perfil** (toque no nome, no alto da tela), informa o código do Personal e toca em **Vincular**. Fichas, treinos e histórico passam a ser vistos pelo Personal.
-- **Cadastro pelo Personal:** no painel, **+ Cadastrar aluno**, com nome, e-mail e senha provisória. O aluno já entra na carteira dele.
-- **Transferir aluno:** o gestor abre **Gestão → Alunos → aluno → Cadastro** e escolhe o novo Personal responsável. O histórico vai junto.
-- **Modelos:** cada Personal tem os próprios modelos. Os modelos criados pelo gestor ficam disponíveis para todos. Na primeira vez, toque em **Modelos → Carregar os 2 modelos iniciais**.
+- **Liberar um Personal:** a pessoa entra no app uma vez. O gestor abre **Gestão → Personais**, escolhe o usuário e toca em **Liberar como Personal**. O app gera o código de convite (ex.: `RAFA27`).
+- **Vínculo sempre com aceite:**
+  - o **aluno solicita** pela busca ou pelo código do Personal, e o Personal aceita ou recusa no painel;
+  - o **Personal convida** por e-mail ou cadastrando o aluno, e o aluno aceita ou recusa em **Meu perfil**, marcando a autorização de acesso aos dados (consentimento registrado com data e texto, conforme a LGPD).
+- **Encerrar:** aluno (Meu perfil) ou Personal (aluno → Cadastro) encerram a qualquer momento; o Personal perde o acesso na hora.
+- **Transferir:** o gestor pode mudar o Personal responsável em **Gestão → Alunos → aluno → Cadastro**, com a concordância do aluno.
+- **Modelos:** cada Personal tem os próprios; os do gestor ficam disponíveis para todos.
 
-Cada Personal só enxerga os alunos da própria carteira. Isso é garantido pelas regras do Firestore, não só pelo app.
+### Perfil público, academias e busca
+
+- O Personal preenche **Meu perfil → Perfil público** (apresentação, especialidades, cidade, bairros, academias, modalidade, preço, contato e CREF opcional) e marca **Aparecer na busca**.
+- Com CREF informado, o perfil ganha o selo **CREF**. O gestor pode marcar o CREF como **conferido** (selo verde).
+- Academias: o Personal sugere (com preenchimento pelo CEP) e o gestor aprova em **Gestão → Academias**.
+- O aluno usa **Encontrar um Personal**, com filtros por cidade, bairro, academia, especialidade e modalidade. **Alunos nunca aparecem em buscas.**
+
+### Termos e privacidade
+
+`termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.
 
 ### 6. Trazer os dados do app de teste
 
