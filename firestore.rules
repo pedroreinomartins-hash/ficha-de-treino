@@ -1,0 +1,42 @@
+rules_version = '2';
+// Regras de acesso do app Ficha de Treino.
+// - O aluno lê e grava apenas os próprios dados (perfil, fichas e treinos) e pode ler os modelos.
+// - O Personal (UID cadastrado na coleção "admins") lê e grava tudo.
+// - A coleção "admins" só pode ser alterada pelo Console do Firebase.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function isPT() { return signed() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function novo() { return request.resource.data; }
+
+    match /admins/{uid} {
+      allow read: if signed() && (me() == uid || isPT());
+      allow write: if false;
+    }
+
+    match /perfis/{uid} {
+      allow read: if isPT() || (signed() && me() == uid);
+      allow create: if isPT() || (signed() && me() == uid && novo().papel == 'aluno');
+      allow update: if isPT() || (signed() && me() == uid
+                     && novo().papel == resource.data.papel
+                     && novo().get('ativo', true) == resource.data.get('ativo', true));
+      allow delete: if isPT();
+    }
+
+    match /fichas/{id} {
+      allow read: if isPT() || (signed() && (resource.data.get('modelo', false) == true
+                                            || resource.data.get('alunoId', '') == me()));
+      allow create: if isPT() || (signed() && novo().get('alunoId', '') == me() && novo().get('modelo', false) != true);
+      allow update: if isPT() || (signed() && resource.data.get('alunoId', '') == me()
+                                           && novo().get('alunoId', '') == me() && novo().get('modelo', false) != true);
+      allow delete: if isPT() || (signed() && resource.data.get('alunoId', '') == me());
+    }
+
+    match /sessions/{id} {
+      allow read, delete: if isPT() || (signed() && resource.data.get('alunoId', '') == me());
+      allow create: if isPT() || (signed() && novo().get('alunoId', '') == me());
+      allow update: if isPT() || (signed() && resource.data.get('alunoId', '') == me() && novo().get('alunoId', '') == me());
+    }
+  }
+}
