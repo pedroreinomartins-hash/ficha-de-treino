@@ -102,6 +102,24 @@ Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Mo
 
 O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA" e o Personal do aluno recebe um aviso no painel. A geração automática dentro do app está prevista para o plano Premium.
 
+### Durante o treino (nov/2026)
+
+- **Carga visível e editável:** cada exercício tem carga de referência, editável direto na ficha (campo *Carga* na lista) e mostrada no treino. Ao salvar o treino, a maior carga usada vira a nova referência.
+- **Séries editáveis:** toque numa série já registrada para corrigir carga, repetições ou tempo, ou excluí-la. **✎ Ajustar** muda séries, repetições, carga, descanso e técnica no meio do treino, com opção de salvar também na ficha.
+- **Fotos sempre visíveis:** as duas posições do exercício aparecem no card (toque para ampliar); o passo a passo fica em *Como executar*. Miniaturas também na ficha e na lista do treino.
+- **Pular exercício:** botão *Pular este exercício* ou *☰ Lista do treino*, com marcação de cada um. Os pulados ficam no histórico e aparecem como alerta para o Personal.
+- **Técnicas avançadas** (campo *Técnica* do exercício): drop-set e rest-pause/cluster registram blocos extras na mesma série (com pausa curta cronometrada); bi-set e tri-set encadeiam os exercícios sem descanso entre eles; pirâmides, negativa e FST-7 mostram a orientação.
+- **Meta semanal:** ao concluir o treino, o app mostra o progresso da semana e parabeniza quando a meta é cumprida.
+
+### Cadastro, avisos e Personal (nov/2026)
+
+- **Data de nascimento** em *Meu perfil* (ou no Cadastro do aluno, pelo Personal). Aviso de aniversário no painel do Personal (7 dias antes) e parabéns ao aluno no dia.
+- **Vencimento da ficha** no editor (data livre ou *Usar fim do ciclo*). Aviso ao aluno e ao Personal a partir de 7 dias antes.
+- **Treinos de hoje em tempo real:** o painel do Personal lista os treinos concluídos no dia, com esforço e recado; com o app aberto, chega um aviso na hora (também em segundo plano, se os avisos do navegador forem ativados).
+- **Personal conduz o treino:** em *Aluno → Fichas → Conduzir treino*, o Personal roda a sessão no próprio celular; os registros vão para o histórico do aluno, marcados como conduzidos pelo Personal.
+
+As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMAP.md).
+
 ### Termos e privacidade
 
 `termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.
@@ -125,6 +143,8 @@ Abra o endereço no Chrome, toque em **⋮** e depois em **Instalar app** (ou **
 | `js/app.js` | Lógica do app |
 | `js/config.js` | Configuração do Firebase |
 | `js/exercicios.js` | Fotos e instruções dos exercícios (Free Exercise DB) |
+| `js/recursos.js` | Técnicas avançadas, aniversário, vencimento, avisos ao Personal e condução do treino |
+| `ROADMAP.md` | Atualizações futuras combinadas |
 | `firestore.rules` | Regras de acesso ao banco |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Instalação como app e uso offline |
 

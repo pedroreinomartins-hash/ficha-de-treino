@@ -1,0 +1,26 @@
+# Atualizações futuras
+
+Lista de melhorias combinadas e ainda não implementadas. Cada item indica a origem e o que é preciso para fazê-lo.
+
+## Rodada 3 · notificações e lembretes automáticos
+
+Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Functions** e **Cloud Messaging**, que exigem o plano **Blaze** do Firebase (pago por uso; no volume atual o custo tende a zero, mas é preciso cadastrar cartão).
+
+| Item | O que fazer |
+|---|---|
+| Notificações push | Registrar o aparelho (token FCM) de cada usuário e enviar avisos mesmo com o app fechado. No iPhone, só com o app adicionado à tela inicial (iOS 16.4+); e-mail como canal alternativo. |
+| Aniversário | Rotina diária que envia parabéns ao aluno e avisa o Personal. Hoje o aviso aparece só dentro do app. |
+| Vencimento da ficha | Lembrete ao aluno e ao Personal alguns dias antes do vencimento. Hoje o aviso aparece só dentro do app. |
+| Treino concluído | Push ao Personal quando o aluno termina o treino, com o app fechado. Hoje o aviso chega em tempo real só com o app aberto. |
+| Lembrete de ausência | Após X dias sem treinar: "Lembramos de você, estamos sentindo a sua falta!" |
+| Reforço da meta semanal | Push ao fechar a semana: "Parabéns, você concluiu todos os treinos desta semana!" Hoje a mensagem aparece no app ao concluir o último treino da meta. |
+
+## Outras ideias registradas
+
+- Geração de ficha por IA dentro do app (plano Premium). Hoje a ficha é criada colando a resposta de uma IA externa.
+- Cobrança no app: por aluno, por Personal ou ambos.
+- Modalidades novas: Hyrox ou CrossFit.
+
+## Concluído
+
+- **03/11/2026 · Rodadas 1 e 2 (sugestões do Carlos Igor):** carga visível e editável na ficha; edição das séries e ajuste do exercício durante o treino, salvando na ficha; fotos sempre visíveis; pular exercício; técnicas avançadas (drop-set, bi-set, tri-set, rest-pause, cluster, pirâmides, negativa, FST-7); mensagem de meta semanal; data de nascimento e aviso de aniversário; vencimento da ficha; treinos de hoje em tempo real no painel do Personal; Personal conduzindo o treino do aluno no próprio celular.
