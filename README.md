@@ -76,8 +76,8 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 ### Aparência e foto
 
-- **Tema por modo:** modo aluno escuro com destaque laranja; modo Personal claro com destaque azul. Em *Meu perfil → Aparência* dá para fixar sempre claro ou sempre escuro.
-- **Foto de perfil:** em *Meu perfil*, adicionar da galeria ou câmera (recortada e reduzida para ~256 px, guardada no próprio perfil, sem Firebase Storage), usar a foto da conta Google ou remover. A foto do Personal aparece na busca.
+- **Tema por modo:** modo aluno escuro; modo Personal claro com destaque azul. Em *Meu perfil → Aparência* dá para fixar sempre claro ou sempre escuro e escolher a cor de destaque do tema escuro: laranja energia (padrão), azul elétrico ou verde-água.
+- **Foto de perfil:** em *Meu perfil*, adicionar da galeria ou câmera (JPG, PNG, WEBP ou HEIC, convertido no aparelho), ajustar o enquadramento arrastando e com zoom, e salvar reduzida (~256 px, guardada no próprio perfil, sem Firebase Storage). Também dá para usar a foto da conta Google ou remover. Conversão de HEIC: biblioteca heic2any (licença MIT, em `js/vendor`). A foto do Personal aparece na busca.
 
 ### Corrida
 
