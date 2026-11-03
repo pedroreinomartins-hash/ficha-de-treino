@@ -100,10 +100,16 @@ function meuPersonalBox(){const p=ME()||{};const P=S.pf||{};const C=S.conf;
   <div class="field"><label class="lbl" for="pf-cod">Tenho o código do Personal</label><div class="row" style="gap:8px"><input id="pf-cod" class="txt grow" autocapitalize="characters" value="${esc(P.cod||'')}" placeholder="Ex.: RAFA27"><button class="btn ghost" data-act="pfvinc" ${P.busy?'disabled':''}>Solicitar</button></div></div>
  </section>`}
 function viewPerfil(){const p=ME()||{nome:'',email:''};
- const head=`<section class="panel"><div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div>${verifBox()}</section>`;
+ const u=fbAuth?.currentUser;const gfoto=u?.photoURL||'';const prev=S.fotoPrev;
+ const fotoBox=`<div class="fotoed">${prev?`<img class="av xl" src="${esc(prev)}" alt="Prévia da foto">`:avatar({...p,id:S.me},'xl')}<div style="display:flex;flex-direction:column;gap:6px">
+  ${prev?`<div class="small muted">Prévia da nova foto</div><div class="row" style="gap:6px"><button class="btn sm primary" data-act="ftsave">Salvar foto</button><button class="btn sm ghost" data-act="ftcancel">Cancelar</button></div>`
+   :`<label class="btn sm ghost" for="ft-arq">${p.foto?'Trocar foto':'Adicionar foto'}</label><input id="ft-arq" type="file" accept="image/*" hidden>
+    ${gfoto&&p.foto!==gfoto?'<button class="btn sm ghost" data-act="ftgoogle">Usar foto do Google</button>':''}${p.foto?'<button class="btn sm ghost" data-act="ftdel">Remover foto</button>':''}`}
+  ${S.fotoErr?`<div class="note bad">${esc(S.fotoErr)}</div>`:''}</div></div>`;
+ const head=`<section class="panel">${fotoBox}<div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div>${verifBox()}</section>`;
  const modo=S.p?`<section class="panel" style="gap:8px"><div class="eyebrow">Como usar o app agora</div><div class="seg" style="grid-template-columns:1fr 1fr"><button data-act="modo" data-v="personal" class="${PM()?'on':''}">Modo Personal</button><button data-act="modo" data-v="aluno" class="${PM()?'':'on'}">Modo aluno (meus treinos)</button></div></section>`:'';
  const corpo=PM()?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>${perfilPublicoForm()}${sonsBox()}`:meuPersonalBox()+sonsBox()+tenisBox()+(S.p?'':souPersonalBox());
- return page(S.g?'Gestor':PM()?'Personal':'Aluno','Meu perfil',`${head}${modo}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><button class="btn danger" data-act="logout">Sair da conta</button><div class="small muted" style="text-align:center">Versão ${APP_VERSAO}</div>`)}
+ return page(S.g?'Gestor':PM()?'Personal':'Aluno','Meu perfil',`${head}${modo}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><section class="panel"><div class="eyebrow">Aparência</div><div class="field"><label class="lbl" for="tema-sel">Tema</label><select id="tema-sel" data-tema="1">${[['auto','Automático: aluno escuro, Personal claro'],['escuro','Sempre escuro'],['claro','Sempre claro']].map(([k,l])=>`<option value="${k}" ${LS.get('ft6.tema','auto')===k?'selected':''}>${l}</option>`).join('')}</select></div></section><button class="btn danger" data-act="logout">Sair da conta</button><div class="small muted" style="text-align:center">Versão ${APP_VERSAO}</div>`)}
 
 /* ---------- Perfil público do Personal ---------- */
 function ppDraft(){if(!S.pp){const d=S.pdoc||{};const m=String(d.cref||'').match(/^(\d+)-?([GP])\/?([A-Z]{2})$/)||[];
@@ -289,7 +295,7 @@ async function autoCadastroPersonal(){const F=S.sp;const nome=(F.nome||'').trim(
  if(!codigo)throw new Error('Não foi possível gerar o código agora. Tente de novo.');
  const cref=num?crefFmt({crefNum:num,crefCat:F.crefCat,crefUF:F.crefUF}):'';
  const b=fdb.batch();
- b.set(fdb.collection('personais').doc(S.me),{nome,codigo,criado:Date.now(),publico:false,cidade:F.cidade.trim(),uf:F.uf,bairros:[],especialidades:[],academias:[],modalidade:'presencial',bio:'',faixaPreco:'',contato:'',cref,crefVerificado:false,autoCadastro:true,declaracao:{versao:TERMOS_V,em:Date.now(),texto:DECL}});
+ b.set(fdb.collection('personais').doc(S.me),{nome,codigo,criado:Date.now(),publico:false,cidade:F.cidade.trim(),uf:F.uf,bairros:[],especialidades:[],academias:[],modalidade:'presencial',bio:'',faixaPreco:'',contato:'',cref,crefVerificado:false,autoCadastro:true,foto:ME()?.foto||'',declaracao:{versao:TERMOS_V,em:Date.now(),texto:DECL}});
  b.set(fdb.collection('convites').doc(codigo),{personalId:S.me});
  b.update(fdb.collection('perfis').doc(S.me),{papel:'personal'});
  await b.commit();S.modo='personal';LS.set('ft4.modo','personal');S.sp=null;S.pp=null;
@@ -366,3 +372,20 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'osmimp':osmImportar().catch(err=>{S.osm.saving=false;S.osm.err='Falha ao importar: '+errMsg(err);render()});break;
  }
 });
+
+/* ---------- Foto de perfil (compacta, guardada no próprio perfil) ---------- */
+async function fotoProcessa(file){if(!file||!/^image\//.test(file.type))throw new Error('Escolha um arquivo de imagem (JPG ou PNG).');
+ let img;try{img=await createImageBitmap(file)}catch(e){img=await new Promise((ok,er)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>er(new Error('Não foi possível abrir a imagem.'));i.src=URL.createObjectURL(file)})}
+ const w=img.width,h=img.height,s=Math.min(w,h);const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);
+ x.drawImage(img,(w-s)/2,(h-s)/2,s,s,0,0,256,256);let q=.85,u=c.toDataURL('image/jpeg',q);while(u.length>70000&&q>.45){q-=.1;u=c.toDataURL('image/jpeg',q)}return u}
+async function fotoSalva(url){const p=ME();p.foto=url;await putNow('perfis',p);if(S.p)try{await fdb.collection('personais').doc(S.me).update({foto:url});if(S.pdoc)S.pdoc.foto=url}catch(e){console.warn(e)}}
+document.addEventListener('change',async e=>{const el=e.target;
+ if(el.id==='ft-arq'&&el.files?.[0]){S.fotoErr='';try{S.fotoPrev=await fotoProcessa(el.files[0])}catch(err){S.fotoErr=err.message}render()}
+ if(el.dataset.tema){LS.set('ft6.tema',el.value);render()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
+ switch(b.dataset.act){
+  case 'ftsave':{const u=S.fotoPrev;S.fotoPrev=null;fotoSalva(u).then(()=>{toast('Foto atualizada.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});render();break}
+  case 'ftcancel':S.fotoPrev=null;render();break;
+  case 'ftgoogle':fotoSalva(fbAuth.currentUser.photoURL).then(()=>{toast('Foto do Google aplicada.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});break;
+  case 'ftdel':fotoSalva('').then(()=>{toast('Foto removida.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});break;
+ }});

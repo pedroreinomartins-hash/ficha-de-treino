@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.02-11';
+const APP_VERSAO='2026.11.02-12';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -83,7 +83,8 @@ const lcol=l=>`var(--t${Math.max(0,LETRAS.indexOf(l))%5})`;
 const letter=(l,cls='')=>`<span class="letter ${cls}" style="background:${lcol(l)}">${esc(l)}</span>`;
 const hcol=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))|0;return `var(--t${Math.abs(h)%5})`};
 const ini=n=>String(n).replace(/\./g,' ').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-const avatar=(p,cls='')=>`<span class="av ${cls}" style="background:${p.papel==='personal'?'var(--ink)':hcol(p.id)};${p.papel==='personal'?'color:var(--bg)':''}">${esc(ini(p.nome))}</span>`;
+const fotoDe=p=>p.foto||(p.id&&(perfil(p.id)?.foto||(typeof pub==='function'?pub(p.id)?.foto:'')))||'';
+const avatar=(p,cls='')=>fotoDe(p)?`<img class="av ${cls}" src="${esc(fotoDe(p))}" alt="" referrerpolicy="no-referrer">`:`<span class="av ${cls}" style="background:${p.papel==='personal'?'var(--ink)':hcol(p.id)};${p.papel==='personal'?'color:var(--bg)':''}">${esc(ini(p.nome))}</span>`;
 function fmtKg(v){v=+v||0;return Number.isInteger(v)?String(v):v.toFixed(1).replace('.',',')}
 const totalSets=t=>t.ex.reduce((a,e)=>a+(+e.s||0),0);
 const sortS=()=>S.sessions.sort((a,b)=>b.inicio-a.inicio);
@@ -171,7 +172,7 @@ function restamp(aid){fichasDe(aid).forEach(f=>put('fichas',f));sessDe(aid).forE
 function novoCodigo(nome){const base=nk(nome).replace(/[^a-z]/g,'').toUpperCase().slice(0,4).padEnd(3,'X');const usados=new Set(S.personais.map(x=>x.codigo));
  for(let i=0;i<200;i++){const c=base+String(10+Math.floor(Math.random()*90));if(!usados.has(c))return c}return base+Date.now().toString(36).slice(-3).toUpperCase()}
 async function liberarPersonal(uid){const p=perfil(uid);const codigo=novoCodigo(p.nome);const b=fdb.batch();
- b.set(fdb.collection('personais').doc(uid),{nome:p.nome,codigo,criado:Date.now()});b.set(fdb.collection('convites').doc(codigo),{personalId:uid});
+ b.set(fdb.collection('personais').doc(uid),{nome:p.nome,codigo,criado:Date.now(),foto:p.foto||''});b.set(fdb.collection('convites').doc(codigo),{personalId:uid});
  b.update(fdb.collection('perfis').doc(uid),{papel:'personal'});await b.commit();return codigo}
 async function revogarPersonal(uid){const x=S.personais.find(y=>y.id===uid);const b=fdb.batch();b.delete(fdb.collection('personais').doc(uid));
  if(x?.codigo)b.delete(fdb.collection('convites').doc(x.codigo));b.update(fdb.collection('perfis').doc(uid),{papel:'aluno'});await b.commit()}
@@ -565,8 +566,10 @@ function render0(){
  if(v==='evolucao')return page('Consulta','Evolução',evolucao(S.me));
  if(v==='historico')return page(`${sessDe(S.me).length} treinos`,'Histórico',historico(S.me));
  S.view='inicio';return viewInicio()}
+function aplicaTema(){const pref=LS.get('ft6.tema','auto');const escuro=pref==='escuro'||(pref==='auto'&&!(S.me&&S.ready&&PM()));
+ const el=document.documentElement;const t=escuro?'dark':'light';if(el.getAttribute('data-theme')!==t){el.setAttribute('data-theme',t);const m=document.querySelector('meta[name=theme-color]');if(m)m.content=escuro?'#0E1217':'#2347D6'}}
 function render(){
- $('#app').innerHTML=render0();tick();
+ aplicaTema();$('#app').innerHTML=render0();tick();
  const sel=$('#exSel');if(sel)sel.onchange=()=>{S.chartEx=sel.value;LS.set('ft.chartEx',sel.value);render()};
  const gs=$('#gfSel');if(gs)gs.onchange=()=>{S.gf=gs.value;render()};
  const es=$('#evoSel');if(es)es.onchange=()=>{S.evoF=es.value;render()};

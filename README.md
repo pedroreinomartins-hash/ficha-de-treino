@@ -74,6 +74,11 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 - **Modelos básicos do app**, disponíveis para todos em *Nova ficha → Começar com*: Full Body básico, Full Body A/B, Superior e Inferior, ABC clássico (peito/ombros/tríceps · dorsal/bíceps · pernas) e Iniciante 2x. Descanso sugerido de 60 s nos compostos e 45 s nos isoladores.
 - **Tempos em minutos:** descanso e tempo de exercício são digitados em min:seg (1:00 = 1 minuto; 0:45 = 45 segundos; 2 = 2 minutos).
 
+### Aparência e foto
+
+- **Tema por modo:** modo aluno escuro com destaque laranja; modo Personal claro com destaque azul. Em *Meu perfil → Aparência* dá para fixar sempre claro ou sempre escuro.
+- **Foto de perfil:** em *Meu perfil*, adicionar da galeria ou câmera (recortada e reduzida para ~256 px, guardada no próprio perfil, sem Firebase Storage), usar a foto da conta Google ou remover. A foto do Personal aparece na busca.
+
 ### Corrida
 
 - **Treino de corrida na ficha** (*+ Treino de corrida* no editor), montado em blocos: aquecimento, corrida contínua, intervalado (tiros com recuperação) e desaquecimento, por tempo ou distância, com ritmo opcional.

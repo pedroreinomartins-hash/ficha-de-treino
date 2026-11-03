@@ -60,7 +60,7 @@ service cloud.firestore {
       allow delete: if isG();
       allow update: if isG()
         || (isP() && me() == uid
-            && so(['publico', 'bio', 'especialidades', 'cidade', 'uf', 'bairros', 'academias', 'modalidade', 'faixaPreco', 'contato', 'cref', 'crefVerificado', 'nome', 'atualizado'])
+            && so(['publico', 'bio', 'especialidades', 'cidade', 'uf', 'bairros', 'academias', 'modalidade', 'faixaPreco', 'contato', 'cref', 'crefVerificado', 'nome', 'atualizado', 'foto'])
             && novo().get('crefVerificado', false) == (novo().get('cref', '') == antigo().get('cref', '') ? antigo().get('crefVerificado', false) : false));
     }
 
