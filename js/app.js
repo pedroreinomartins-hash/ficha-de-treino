@@ -114,12 +114,18 @@ const CFG=window.FIREBASE_CONFIG||{};
 const configOK=!!(window.firebase&&CFG.apiKey&&!/COLE/.test(CFG.apiKey));
 function initFirebase(){
  if(!configOK){S.view='config';render();return}
- firebase.initializeApp(CFG);fbAuth=firebase.auth();fdb=firebase.firestore();
+ firebase.initializeApp(CFG);fbAuth=firebase.auth();fbAuth.languageCode='pt-BR';fdb=firebase.firestore();
  fdb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
  fbAuth.onAuthStateChanged(onAuth);
 }
+/* Contas com e-mail e senha só entram depois de confirmar o e-mail (login Google já vem confirmado). O gestor fica isento para nunca perder o acesso. */
+function precisaConfirmar(u){return !!u&&!u.emailVerified&&!S.g&&(u.providerData||[]).some(x=>x.providerId==='password')}
+/* Senha: mínimo 8 caracteres, com letras e números. */
+const SENHA_REGRA='A senha precisa ter pelo menos 8 caracteres, com letras e números.';
+function senhaOK(x){x=x||'';return x.length>=8&&/[A-Za-z]/.test(x)&&/\d/.test(x)}
 async function onAuth(u){
  unsubs.forEach(f=>f());unsubs=[];if(modP.un)modP.un();modP={pid:null,un:null};for(const k in SRC)delete SRC[k];S.perfis=[];S.fichas=[];S.sessions=[];S.personais=[];S.vinculos=[];S.academias=[];S.pubs=[];S.pp=null;S.ac=null;S.inv=null;
+ S.needVerify=false;
  if(!u){S.me=null;S.g=false;S.p=false;S.ready=true;S.view='login';render();return}
  S.me=u.uid;S.ready=false;render();
  const uid=u.uid,C=c=>fdb.collection(c);
@@ -128,6 +134,7 @@ async function onAuth(u){
  try{const ref=C('perfis').doc(uid),ps=await ref.get();
   if(!ps.exists)await ref.set({id:uid,nome:(S.auth.nome||'').trim()||u.displayName||u.email.split('@')[0],email:u.email,papel:'aluno',personalId:'',ativo:true,ativa:null,criado:Date.now()});
  }catch(e){console.warn(e)}
+ S.needVerify=precisaConfirmar(u);if(S.needVerify){S.ready=true;render();return}
  if(S.g){listen('perfis','perfis',C('perfis'));listen('fichas','fichas',C('fichas'));listen('sessions','sessions',C('sessions'));
   unsubs.push(C('personais').onSnapshot(sn=>{S.personais=sn.docs.map(d=>({...d.data(),id:d.id}));soft()},e=>console.warn(e)))}
  else if(S.p){listen('me','perfis',C('perfis').doc(uid));listen('meus','perfis',C('perfis').where('personalId','==',uid));
@@ -166,7 +173,7 @@ function put(c,o){stamp(c,o);const arr=S[c];const i=arr.findIndex(x=>x.id===o.id
 function del(c,id){S[c]=S[c].filter(x=>x.id!==id);if(fdb)fdb.collection(c).doc(id).delete().catch(e=>console.warn(e))}
 function soft(){if(S.view==='treino'||document.activeElement?.matches?.('#app input,#app textarea,#app select'))return;render()}
 function toast(t){let el=$('#toast');if(!el){el=document.createElement('div');el.id='toast';document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3500)}
-const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password':'Informe a senha.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/email-already-in-use':'Este e-mail já tem cadastro. Use "Entrar".','auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão com a internet.','auth/operation-not-allowed':'Esse tipo de login não está ativado no Firebase.','auth/unauthorized-domain':'Este endereço não está autorizado no Firebase (Authentication → Settings → Domínios autorizados).','auth/account-exists-with-different-credential':'Este e-mail já tem cadastro com senha. Entre com e-mail e senha.'};
+const AUTH_ERR={'auth/invalid-email':'E-mail inválido.','auth/missing-password':'Informe a senha.','auth/weak-password':SENHA_REGRA,'auth/email-already-in-use':'Este e-mail já tem cadastro. Use "Entrar".','auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão com a internet.','auth/operation-not-allowed':'Esse tipo de login não está ativado no Firebase.','auth/unauthorized-domain':'Este endereço não está autorizado no Firebase (Authentication → Settings → Domínios autorizados).','auth/account-exists-with-different-credential':'Este e-mail já tem cadastro com senha. Entre com e-mail e senha.'};
 const authMsg=e=>AUTH_ERR[e?.code]||('Não foi possível concluir: '+(e?.message||e));
 async function putNow(c,o){stamp(c,o);const arr=S[c];const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.unshift(o);await fdb.collection(c).doc(o.id).set(clone(o))}
 function restamp(aid){fichasDe(aid).forEach(f=>put('fichas',f));sessDe(aid).forEach(x=>put('sessions',x))}
@@ -283,6 +290,14 @@ function page(eyebrow,title,body,{back}={}){return `<main class="wrap"><header c
 
 /* ================= Login ================= */
 function viewConfig(){return `<main class="wrap"><div><div class="eyebrow">Configuração pendente</div><h1>Ficha de Treino</h1></div><section class="panel"><p>O app ainda não está ligado ao Firebase. Abra o arquivo <b>js/config.js</b> no GitHub e cole a configuração do seu projeto Firebase, conforme o passo a passo do README.</p></section></main>`}
+function viewVerificar(){const em=fbAuth?.currentUser?.email||'';
+ return `<main class="wrap" style="max-width:440px"><header style="padding-top:8vh"><div class="eyebrow">Falta só um passo</div><h1 style="font-size:36px">Confirme seu e-mail</h1></header>
+ <section class="panel"><p>Enviamos um link de confirmação para <b>${esc(em)}</b>. Abra o e-mail, toque no link e depois volte aqui.</p>
+ <div class="small muted">Não encontrou? Confira a caixa de spam ou lixo eletrônico.</div>
+ ${S.pf?.err?`<div class="note bad">${esc(S.pf.err)}</div>`:''}
+ <button class="btn primary big" data-act="vfok">Já confirmei</button>
+ <button class="btn ghost" data-act="vfsend">Reenviar e-mail de confirmação</button>
+ <button class="btn ghost" data-act="logout">Sair e usar outra conta</button></section></main>`}
 function viewSplash(){return `<main class="wrap"><div class="center" style="padding-top:30vh"><h1>Ficha de Treino</h1><div class="muted">Carregando…</div></div></main>`}
 function viewLogin(){const A=S.auth,cad=A.mode==='criar',rec=A.mode==='senha';
  return `<main class="wrap" style="max-width:440px"><header style="padding-top:8vh"><div class="eyebrow">Treino, carga e frequência</div><h1 style="font-size:40px">Ficha de Treino</h1></header>
@@ -293,7 +308,7 @@ function viewLogin(){const A=S.auth,cad=A.mode==='criar',rec=A.mode==='senha';
   ${rec?'<h2>Redefinir senha</h2><div class="small muted">Enviaremos um link para o seu e-mail.</div>':''}
   ${cad?`<div class="field"><label class="lbl" for="au-nome">Seu nome</label><input id="au-nome" class="txt" autocomplete="name" value="${esc(A.nome)}" placeholder="Ex.: P. Augusto"></div>`:''}
   <div class="field"><label class="lbl" for="au-email">E-mail</label><input id="au-email" class="txt" type="email" autocomplete="email" inputmode="email" value="${esc(A.email)}"></div>
-  ${rec?'':`<div class="field"><label class="lbl" for="au-senha">Senha${cad?' (mínimo 6 caracteres)':''}</label><input id="au-senha" class="txt" type="password" autocomplete="${cad?'new-password':'current-password'}"></div>`}
+  ${rec?'':`<div class="field"><label class="lbl" for="au-senha">Senha${cad?' (mínimo 8, com letras e números)':''}</label><input id="au-senha" class="txt" type="password" autocomplete="${cad?'new-password':'current-password'}"></div>`}
   ${A.err?`<div class="note bad">${esc(A.err)}</div>`:''}${A.ok?`<div class="note good">${esc(A.ok)}</div>`:''}
   <button class="btn primary big" type="submit" ${A.busy?'disabled':''}>${rec?'Enviar link':cad?'Criar conta':'Entrar'}</button>
   ${rec?`<button class="btn ghost" type="button" data-act="amode" data-v="entrar">Voltar</button>`:cad?'':`<button class="btn ghost" type="button" data-act="amode" data-v="senha">Esqueci minha senha</button>`}
@@ -305,6 +320,7 @@ async function googleLogin(){const A=S.auth;A.err='';A.ok='';const prov=new fire
   if(e?.code==='auth/popup-closed-by-user'||e?.code==='auth/cancelled-popup-request')return;A.err=authMsg(e);render()}}
 async function submitAuth(){const A=S.auth;A.email=($('#au-email')?.value||'').trim();if($('#au-nome'))A.nome=$('#au-nome').value;const senha=$('#au-senha')?.value||'';A.err='';A.ok='';
  if(A.mode==='criar'&&!A.nome.trim()){A.err='Informe seu nome.';render();return}
+ if(A.mode==='criar'&&!senhaOK(senha)){A.err=SENHA_REGRA;render();return}
  A.busy=true;render();
  try{if(A.mode==='senha'){await fbAuth.sendPasswordResetEmail(A.email);A.ok='Link enviado. Confira sua caixa de entrada e o spam.'}
   else if(A.mode==='criar'){const cr=await fbAuth.createUserWithEmailAndPassword(A.email,senha);try{await cr.user.sendEmailVerification()}catch(e){}}
@@ -566,7 +582,7 @@ function alunosBody(){
  const nu=U?`<section class="form"><h3>Cadastrar aluno</h3>
   <div class="field"><label class="lbl" for="nu-nome">Nome</label><input id="nu-nome" class="txt" data-nu="nome" value="${esc(U.nome)}" placeholder="Ex.: Eloisa"></div>
   <div class="field"><label class="lbl" for="nu-email">E-mail do aluno</label><input id="nu-email" class="txt" type="email" data-nu="email" value="${esc(U.email||'')}"></div>
-  <div class="field"><label class="lbl" for="nu-senha">Senha provisória (mínimo 6)</label><input id="nu-senha" class="txt" data-nu="senha" value="${esc(U.senha||'')}"></div>
+  <div class="field"><label class="lbl" for="nu-senha">Senha provisória (mínimo 8, com letras e números)</label><input id="nu-senha" class="txt" data-nu="senha" value="${esc(U.senha||'')}"></div>
   ${U.err?`<div class="note bad">${esc(U.err)}</div>`:''}<div class="small muted">Passe o e-mail e a senha ao aluno. Ele pode trocar a senha em “Esqueci minha senha”.</div>
   <div class="nav2"><button class="btn ghost" data-act="nucancel">Cancelar</button><button class="btn primary" data-act="nusave" ${U.busy?'disabled':''}>Cadastrar</button></div></section>`:`<button class="btn primary" data-act="nuopen">+ Cadastrar aluno</button>`;
  const card=p=>{const f=ativaDe(p.id),meta=metaDe(f),wk=weekCount(ws,p.id),ss=sessDe(p.id),al=alertas(p.id);
@@ -601,6 +617,7 @@ function viewAluno(){
 function render0(){
  if(!configOK)return viewConfig();
  if(!S.me)return S.ready?viewLogin():viewSplash();
+ if(S.needVerify)return viewVerificar();
  if(!S.ready)return viewSplash();
  if(ME()&&!ME().aceite)return viewTermos();
  if(S.view==='login')S.view=PM()?'alunos':'inicio';
@@ -680,7 +697,7 @@ document.addEventListener('click',e=>{
   case 'nuopen':S.newU={nome:'',email:'',senha:''};render();setTimeout(()=>$('#nu-nome')?.focus(),0);break;
   case 'nucancel':S.newU=null;render();break;
   case 'nusave':{const U=S.newU,nome=(U.nome||'').trim(),email=(U.email||'').trim();U.err='';
-   if(!nome){U.err='Informe o nome.';render();break}if(!email){U.err='Informe o e-mail do aluno.';render();break}if((U.senha||'').length<6){U.err='A senha provisória precisa ter pelo menos 6 caracteres.';render();break}
+   if(!nome){U.err='Informe o nome.';render();break}if(!email){U.err='Informe o e-mail do aluno.';render();break}if(!senhaOK(U.senha)){U.err='A senha provisória precisa ter pelo menos 8 caracteres, com letras e números.';render();break}
    U.busy=true;render();criarAlunoPeloPersonal(nome,email,U.senha).then(p=>{S.newU=null;S.sel=p.id;S.sub='fichas';go('aluno')}).catch(e=>{U.busy=false;U.err=authMsg(e);render()});break}
   case 'seedm':{const suf=S.g?'':'-'+S.me.slice(0,8);const mk=(t,id,tpl,nome)=>({...clone(t),id:id+suf,tpl,modelo:true,global:S.g,alunoId:null,arquivada:false,nome,autor:ME()?.nome||'Personal',mig1:1});put('fichas',mk(TPL_CONDRO,'m-condro','condro','Full Body ABC – condropatia patelar'));put('fichas',mk(TPL_TEND,'m-tend','tend','Full Body ABC – tendinite patelar'));render();break}
   case 'copycode':{const t=v;try{navigator.clipboard.writeText(t).then(()=>toast('Código copiado.'),()=>toast('Código: '+t))}catch(e){toast('Código: '+t)}break}
