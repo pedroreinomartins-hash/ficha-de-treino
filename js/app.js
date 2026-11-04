@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-1';
+const APP_VERSAO='2026.11.04-2';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -359,20 +359,7 @@ function fichasList(owner){
   <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
  const ativas=lista.filter(f=>!f.arquivada),arq=lista.filter(f=>f.arquivada);
  const seed=isM&&!fichasDe('modelos').some(f=>f.tpl==='condro'&&(S.g?f.global:f.personalId===S.me))?`<button class="btn dash" data-act="seedm">+ Carregar os 2 modelos iniciais (condropatia e tendinite)</button>`:'';
- return `${nf}${seed}${ativas.map(card).join('')||(S.newF?'':`<div class="empty">${isM?'Nenhum modelo ainda. Modelos servem de base para montar fichas dos alunos.':'Nenhuma ficha ainda.'}</div>`)}${arq.length?`<div class="eyebrow" style="margin-top:6px">Arquivadas</div>${arq.map(card).join('')}`:''}${isM?'':importBox(owner)}`}
-function importBox(aid){const I=S.imp;
- if(!I||I.aid!==aid)return `<button class="btn sm ghost" style="align-self:center" data-act="impopen" data-v="${aid}">Importar dados do app de teste</button>`;
- return `<section class="form"><h3>Importar dados do app de teste</h3><div class="small muted">No app de teste do Claude, entre no seu perfil, abra Fichas e toque em “Copiar meus dados”. Depois cole aqui.</div>
- <textarea id="imp-txt" class="txt" style="min-height:120px" placeholder='{"versao":"ficha-de-treino",...}'></textarea>${I.err?`<div class="note bad">${esc(I.err)}</div>`:''}${I.ok?`<div class="note good">${esc(I.ok)}</div>`:''}
- <div class="nav2"><button class="btn ghost" data-act="impcancel">Fechar</button><button class="btn primary" data-act="impgo">Importar</button></div></section>`}
-function importar(aid,txt){let d;try{d=JSON.parse(txt)}catch(e){throw new Error('O texto colado não é um pacote de dados válido.')}
- if(!d||!Array.isArray(d.fichas)||!Array.isArray(d.sessions))throw new Error('O texto colado não é um pacote de dados válido.');
- const pre=aid.slice(0,6)+'-',map={};
- d.fichas.forEach(f=>{const nf=normF({...f,id:pre+f.id,alunoId:aid,modelo:false});delete nf._p;delete nf._seed;map[f.id]=nf.id;put('fichas',nf)});
- d.sessions.forEach(s=>{const ns=normS({...s,id:pre+s.id,alunoId:aid,fichaId:map[s.fichaId]||s.fichaId});put('sessions',ns)});
- if(d.ativa&&map[d.ativa])setAtiva(aid,map[d.ativa]);
- return `${d.fichas.length} fichas e ${d.sessions.length} treinos importados.`}
-
+ return `${nf}${seed}${ativas.map(card).join('')||(S.newF?'':`<div class="empty">${isM?'Nenhum modelo ainda. Modelos servem de base para montar fichas dos alunos.':'Nenhuma ficha ainda.'}</div>`)}${arq.length?`<div class="eyebrow" style="margin-top:6px">Arquivadas</div>${arq.map(card).join('')}`:''}`}
 /* ================= Editor de ficha ================= */
 function viewFicha(){
  const f=ficha(S.edit);if(!f){S.view=S.back;return render0()}
@@ -606,7 +593,7 @@ function viewAluno(){
   ${p.email?`<button class="btn ghost" data-act="rpin">Enviar link para redefinir a senha</button>`:''}${S.cadMsg?`<div class="note good">${esc(S.cadMsg)}</div>`:''}
   ${S.p&&p.personalId===S.me?(C==='enc'?`<div class="miniconf"><span class="grow">Encerrar o acompanhamento de ${esc(p.nome)}? Você deixa de ver os dados dele.</span><button class="btn sm danger" data-act="penc">Encerrar</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`:`<button class="btn danger" data-act="conf" data-v="enc">Encerrar acompanhamento</button>`):''}
   ${S.g?`<button class="btn ${p.ativo===false?'primary':'danger'}" data-act="pativo">`:'<span hidden>'}${p.ativo===false?'Reativar aluno':'Desativar aluno'}${S.g?'</button>':'</span>'}
-  ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>${importBox(p.id)}`}
+  ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>`}
  const al=alertas(p.id);
  const fbp=S.fb&&S.sessions.find(x=>x.id===S.fb)?.alunoId===p.id?fbPanel():'';
  return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${fbp}${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
@@ -704,9 +691,6 @@ document.addEventListener('click',e=>{
   case 'lpgo':{const id=$('#lp-sel')?.value;if(!id){S.gmsg={c:'bad',t:'Escolha o usuário que será Personal.'};render();break}
    liberarPersonal(id).then(c=>{S.gmsg={c:'good',t:`${perfil(id)?.nome} agora é Personal. Código de convite: ${c}. Peça para ele sair e entrar de novo no app.`};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível liberar: '+(e.message||e)};render()});break}
   case 'revgo':revogarPersonal(v).then(()=>{S.conf=null;S.gmsg={c:'good',t:'Acesso de Personal revogado.'};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível revogar: '+(e.message||e)};render()});break;
-  case 'impopen':S.imp={aid:v};render();break;
-  case 'impcancel':S.imp=null;render();break;
-  case 'impgo':{try{S.imp.ok=importar(S.imp.aid,$('#imp-txt').value);S.imp.err=''}catch(e){S.imp.err=e.message;S.imp.ok=''}render();break}
   case 'vid':S.vid=v;render();break;
   case 'semPno':LS.set('ft4.semP',1);render();break;
   /* navegação */

@@ -126,12 +126,7 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 
 `termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.
 
-### 6. Trazer os dados do app de teste
-
-1. No app de teste do Claude, entre no seu perfil, abra **Fichas** e toque em **Copiar meus dados**.
-2. No app publicado, entre na sua conta, abra **Fichas → Importar dados do app de teste**, cole e toque em **Importar**.
-
-### 7. Instalar no celular (Android)
+### 6. Instalar no celular (Android)
 
 Abra o endereço no Chrome, toque em **⋮** e depois em **Instalar app** (ou **Adicionar à tela inicial**). O app abre em tela cheia e funciona mesmo sem internet; os treinos sincronizam quando a conexão voltar.
 
