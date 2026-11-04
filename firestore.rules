@@ -128,6 +128,16 @@ service cloud.firestore {
         || (isP() && pid(antigo()) == me());
     }
 
+    // Treino em andamento (um documento por aluno, id = UID do aluno). Só o aluno e o Personal
+    // com vínculo ativo leem e gravam, para continuar o treino no celular de um ou de outro.
+    match /andamento/{aid} {
+      allow read: if isG() || (signed() && me() == aid) || (isP() && pid(antigo()) == me());
+      allow create, update: if isG()
+        || (signed() && me() == aid && novo().alunoId == aid && pid(novo()) == myPersonal())
+        || (isP() && novo().alunoId == aid && pid(novo()) == me() && alunoDoPersonal(aid));
+      allow delete: if isG() || (signed() && me() == aid) || (isP() && alunoDoPersonal(aid));
+    }
+
     match /sessions/{id} {
       allow read: if isG()
         || (signed() && antigo().get('alunoId', '') == me())

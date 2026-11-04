@@ -75,13 +75,7 @@ function feedHoje(){const t0=hoje0().getTime();const ids=new Set(alunos().map(p=
   return `<button class="item" data-act="aluno" data-v="${s.alunoId}" style="width:100%;text-align:left">${avatar(p,'s')}<div class="grow"><b>${esc(p.nome)}</b> · treino ${esc(s.letra)}<div class="small muted">${new Date(s.fim||s.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${Math.round((s.dur||0)/60)} min${s.conduzidoPor?' · conduzido por você':''}${s.pulados?.length?' · '+s.pulados.length+' pulado'+(s.pulados.length>1?'s':''):''}</div>${fb?.txt?`<div class="fb">“${esc(fb.txt)}”</div>`:''}</div><div style="text-align:right">${fb?.pse?`<b class="num" style="font-size:22px">${fb.pse}</b><div class="small muted">esforço</div>`:'<span class="small muted">sem avaliação</span>'}</div></button>`}).join('');
  return `<section class="panel" style="gap:6px"><div class="row"><div class="eyebrow grow">Treinos de hoje · em tempo real</div><span class="chip ${ss.length?'on':''}">${ss.length}</span></div>${linhas?`<div class="list">${linhas}</div>`:'<div class="small muted">Quando um aluno concluir o treino, ele aparece aqui na hora, com o esforço e o recado.</div>'}${avisosBtn()}</section>`}
 
-/* ================= Personal conduz o treino do aluno ================= */
-function conduzirBox(aid){if(!S.p||perfil(aid)?.personalId!==S.me)return '';const f=ativaDe(aid);
- if(myActive())return myActive().alunoId===aid?`<button class="banner" data-act="tab" data-v="treino"><span class="grow"><b>Treino em andamento</b><br><span class="small">Toque para voltar à sessão</span></span></button>`:'';
- if(!f)return '';const ni=nextIdx0(f);
- const bt=f.treinos.map((t,i)=>t.tipo==='corrida'?'':`<button data-act="conduzir" data-a="${aid}" data-f="${f.id}" data-v="${t.id}" ${temConteudo(t)?'':'disabled'} ${i===ni?'class="on"':''}><b>${LETRAS[i]}</b><span>${esc(t.nome)}</span></button>`).join('');
- return `<section class="panel"><div class="eyebrow">Conduzir treino no seu celular</div><div class="small muted">Use quando o aluno estiver sem bateria ou para evitar distrações. Os registros vão para o histórico dele, marcados como conduzidos por você. Próximo da sequência: treino ${LETRAS[ni]}.</div><div class="alt">${bt}</div></section>`}
-
+/* ================= Personal conduz o treino do aluno: ver js/andamento.js ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const v=b.dataset.v;
  switch(b.dataset.act){
   case 'avisoson':try{Notification.requestPermission().then(()=>render())}catch(e){}break;

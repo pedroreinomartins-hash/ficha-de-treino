@@ -106,7 +106,7 @@ const S={perfis:[],fichas:[],sessions:[],personais:[],vinculos:[],academias:[],p
  chartEx:LS.get('ft.chartEx',''),evoF:'ativa',fb:null,fbv:null,cloud:false,ready:false,imp:null,vid:null,
  active:LS.get('ft4.active',null)};
 const cacheCol=()=>{};
-const saveActive=()=>LS.set('ft4.active',S.active);
+const saveActive=()=>{LS.set('ft4.active',S.active);if(typeof andSync==='function')andSync()};
 
 /* ================= Firebase (login + banco de dados na nuvem) ================= */
 let fbAuth=null,fdb=null,unsubs=[],wake=null,actx=null;const SRC={};
@@ -148,6 +148,7 @@ async function onAuth(u){
  else{listen('acadOk','academias',C('academias').where('aprovada','==',true));listen('pubs','pubs',C('personais').where('publico','==',true));
   if(S.p){listen('vincP','vinculos',C('vinculos').where('personalId','==',uid));listen('acadMinhas','academias',C('academias').where('sugeridaPor','==',uid))}}
  if(!S.g){listen('vincA','vinculos',C('vinculos').where('alunoId','==',uid));if(u.emailVerified&&em)listen('vincE','vinculos',C('vinculos').where('alunoEmail','==',em))}
+ andListen(uid);
  if(!S.g)unsubs.push(C('personais').doc(uid).onSnapshot(d=>{S.pdoc=d.exists?d.data():null;if(S.ready&&d.exists!==S.p)onAuth(fbAuth.currentUser);else soft()},()=>{}));
  S.view=myActive()?'treino':PM()?'alunos':'inicio';
 }
@@ -236,7 +237,7 @@ const myActive=()=>S.active&&(S.active.alunoId===S.me||S.active.cond===S.me)?S.a
 const curEx=()=>S.active.exList[S.active.idx];
 function rec(ex){const a=S.active;return a.ex[ex.id]||(a.ex[ex.id]={n:ex.n,sets:[],dor:null})}
 function draft(ex){const a=S.active;if(!a.draft[ex.id]){const l=lastFor(ex.n,a.alunoId);const ls=l?.r.sets[l.r.sets.length-1];a.draft[ex.id]=ex.tipo==='t'?{sec:ls?.sec??ex.hold??30}:{kg:(+ex.kg>0?+ex.kg:ls?.kg)??0,reps:ls?.reps??firstNum(ex.r)}}return a.draft[ex.id]}
-function startSession(fid,tid,aid){unlockAudio();const f=ficha(fid),ti=f.treinos.findIndex(t=>t.id===tid),t=f.treinos[ti];if(!t||!temConteudo(t))return;const cond=aid&&aid!==S.me;if(t.tipo==='corrida'){if(cond)return toast('A condução pelo Personal vale para treinos de musculação.');return startCorrida(f,t,ti)}const now=Date.now();
+function startSession(fid,tid,aid){unlockAudio();const f=ficha(fid),ti=f.treinos.findIndex(t=>t.id===tid),t=f.treinos[ti];if(!t||!temConteudo(t))return;const cond=aid&&aid!==S.me;{const d=andDe(cond?aid:S.me);if(d&&d.controle!==S.me&&t.tipo!=='corrida')return toast(cond?'Este aluno já está com um treino em andamento. Use “Assumir e continuar”.':'Seu treino está em andamento em outro celular. Use “Retomar no meu celular”.')}if(t.tipo==='corrida'){if(cond)return toast('A condução pelo Personal vale para treinos de musculação.');return startCorrida(f,t,ti)}const now=Date.now();
  S.active={id:uid('s'),alunoId:cond?aid:S.me,fichaId:f.id,treinoId:t.id,letra:LETRAS[ti],treinoNome:t.nome,exList:clone(t.ex),inicio:now,idx:0,ex:{},draft:{},skip:{},restEnd:null,holdEnd:null};
  if(cond){S.active.cond=S.me;S.active.condNome=ME()?.nome||'Personal';S.active.alunoNome=perfil(aid)?.nome||'aluno'}
  S.view='treino';S.confirmEnd=false;saveActive();render();keepAwake();mediaMusc()}
@@ -264,7 +265,7 @@ function endSession(keep){const a=S.active;releaseAwake();sessaoAudio.parar();if
   if(a.cond){s.conduzidoPor=a.cond;s.conduzidoNome=a.condNome}
   put('sessions',s);S.fb=s.id;S.fbv=null;atualizaCargas(a);
   if(!a.cond){const meta=metaDe(ficha(a.fichaId));S.metaMsg={wk:weekCount(weekStart(a.inicio),a.alunoId),meta}}}
- const cond=a.cond;S.active=null;S.confirmEnd=false;saveActive();
+ andFim(a);const cond=a.cond;S.active=null;S.confirmEnd=false;saveActive();
  if(cond){S.sel=a.alunoId;S.sub='historico';S.view='aluno';if(!keep)S.fb=null}else S.view='inicio';render()}
 /* A maior carga usada em cada exercício passa a ser a carga de referência da ficha. */
 function atualizaCargas(a){const f=ficha(a.fichaId);if(!f||!canEdit(f))return;const t=f.treinos.find(x=>x.id===a.treinoId);if(!t)return;let mud=false;
@@ -285,7 +286,7 @@ function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
 function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
-function activeBanner(){const a=myActive();if(!a)return '';return `<button class="banner" data-act="tab" data-v="treino"><span class="letter s" style="background:rgba(255,255,255,.22)">${esc(a.letra)}</span><span class="grow"><b>Treino em andamento${a.cond?' · '+esc(a.alunoNome):''}</b><br><span class="small">Toque para voltar à sessão</span></span><span class="num" id="elapsed" style="font-size:22px"></span></button>`}
+function activeBanner(){const a=myActive();if(!a)return andBannerAluno();return `<button class="banner" data-act="tab" data-v="treino"><span class="letter s" style="background:rgba(255,255,255,.22)">${esc(a.letra)}</span><span class="grow"><b>Treino em andamento${a.cond?' · '+esc(a.alunoNome):''}</b><br><span class="small">Toque para voltar à sessão</span></span><span class="num" id="elapsed" style="font-size:22px"></span></button>`}
 function page(eyebrow,title,body,{back}={}){return `<main class="wrap"><header class="top"><div style="min-width:0">${back?`<button class="btn sm ghost" data-act="tab" data-v="${back}" style="margin-bottom:8px">‹ Voltar</button>`:''}<div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><div class="topR">${meChip()}${syncTag()}</div></header>${activeBanner()}${body}</main>${tabs()}`}
 
 /* ================= Login ================= */
@@ -352,7 +353,7 @@ function viewInicio(){
   ${temConteudo(nt)?`<button class="btn primary big" data-act="start" data-f="${f.id}" data-v="${nt.id}">Começar treino ${LETRAS[ni]}</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os na aba Fichas.</div>`}
   <div class="alt">${f.treinos.map((t,i)=>`<button data-act="start" data-f="${f.id}" data-v="${t.id}" ${temConteudo(t)?'':'disabled'}><b>${LETRAS[i]}</b><span>${esc(t.nome)}</span></button>`).join('')}</div>
  </section>`:`<div class="empty">A ficha “${esc(f.nome)}” ainda não tem treinos. Monte o treino A para começar.<br><br><button class="btn primary" data-act="open" data-v="${f.id}">Montar treinos</button></div>`;
- return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${avisosAluno()}${semPersonal()}${myActive()?'':start}${myActive()?'':'<button class="btn ghost" data-act="regnova">+ Registrar corrida avulsa</button>'}${check}
+ return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${avisosAluno()}${semPersonal()}${myActive()||andOutro()?'':start}${myActive()?'':'<button class="btn ghost" data-act="regnova">+ Registrar corrida avulsa</button>'}${check}
  <section class="panel">
   <div class="row"><div class="grow"><div class="eyebrow">Esta semana</div><h2><span class="num">${wk}</span> de ${meta} treinos</h2>${wk>=meta?'<span class="chip on" style="display:inline-block;margin-top:6px">Meta cumprida ✓</span>':''}</div><div class="small muted" style="text-align:right">Semana <b class="num" style="font-size:20px;color:var(--ink)">${pw}</b> de ${f.semanas||8}<br>do ciclo</div></div>
   <div class="week">${days}</div>
@@ -585,11 +586,11 @@ function alunosBody(){
   <div class="field"><label class="lbl" for="nu-senha">Senha provisória (mínimo 8, com letras e números)</label><input id="nu-senha" class="txt" data-nu="senha" value="${esc(U.senha||'')}"></div>
   ${U.err?`<div class="note bad">${esc(U.err)}</div>`:''}<div class="small muted">Passe o e-mail e a senha ao aluno. Ele pode trocar a senha em “Esqueci minha senha”.</div>
   <div class="nav2"><button class="btn ghost" data-act="nucancel">Cancelar</button><button class="btn primary" data-act="nusave" ${U.busy?'disabled':''}>Cadastrar</button></div></section>`:`<button class="btn primary" data-act="nuopen">+ Cadastrar aluno</button>`;
- const card=p=>{const f=ativaDe(p.id),meta=metaDe(f),wk=weekCount(ws,p.id),ss=sessDe(p.id),al=alertas(p.id);
-  return `<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p)}<div class="grow"><h2>${esc(p.nome)}</h2><div class="small muted">${f?esc(f.nome):'Sem ficha ativa'}</div>${S.g?`<div class="small muted">${p.personalId?'Personal: '+esc(nomeP(p.personalId)):'Sem Personal'}</div>`:''}</div><div style="text-align:right"><b class="num" style="font-size:24px">${wk}/${meta}</b><div class="small muted">na semana</div></div></div>
+ const card=p=>{const f=ativaDe(p.id),meta=metaDe(f),wk=weekCount(ws,p.id),ss=sessDe(p.id),al=alertas(p.id),ax=andCardExtra(p);
+  return `<div class="panel stud" role="button" tabindex="0" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p)}<div class="grow"><h2>${esc(p.nome)}</h2><div class="small muted">${f?esc(f.nome):'Sem ficha ativa'}</div>${S.g?`<div class="small muted">${p.personalId?'Personal: '+esc(nomeP(p.personalId)):'Sem Personal'}</div>`:''}</div><div style="text-align:right"><b class="num" style="font-size:24px">${wk}/${meta}</b><div class="small muted">na semana</div></div>${ax.btn}</div>${ax.tag}
   <div class="meter"><i style="width:${Math.min(100,wk/meta*100)}%"></i></div>
   <div class="small muted">${ss.length?`Último treino: ${dataLonga(ss[0].inicio)} · ${ss.length} no total`:'Nenhum treino registrado'}</div>
-  ${al.length?`<div class="alerts">${al.slice(0,3).map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}</button>`};
+  ${al.length?`<div class="alerts">${al.slice(0,3).map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}</div>`};
  const filtro=S.g?`<select id="gfSel" aria-label="Filtrar por Personal"><option value="">Todos os Personais</option><option value="-" ${S.gf==='-'?'selected':''}>Sem Personal</option>${S.personais.map(x=>`<option value="${x.id}" ${S.gf===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select>`:'';
  return `${filtro}${PM()?feedHoje():''}<div class="kpis"><div class="kpi"><b>${al.length}</b><span>alunos ativos</span></div><div class="kpi"><b>${tot}</b><span>treinos na semana</span></div><div class="kpi"><b style="color:${nal?'var(--bad)':'var(--ink)'}">${nal}</b><span>alertas</span></div></div>
  ${nu}${al.map(card).join('')}${inat.length?`<div class="eyebrow">Inativos</div>${inat.map(p=>`<button class="panel stud" data-act="aluno" data-v="${p.id}"><div class="row">${avatar(p,'s')}<b class="grow">${esc(p.nome)}</b><span class="chip">Inativo</span></div></button>`).join('')}`:''}`}
@@ -598,7 +599,7 @@ function viewAluno(){
  const sub=S.sub;
  const st=`<div class="subtabs">${[['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico'],['cadastro','Cadastro']].map(([k,l])=>`<button data-act="sub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
  let body='';
- if(sub==='fichas')body=conduzirBox(p.id)+fichasList(p.id);
+ if(sub==='fichas')body=fichasList(p.id);
  else if(sub==='evolucao')body=evolucao(p.id);
  else if(sub==='historico')body=historico(p.id);
  else{const C=S.conf;body=`<section class="panel">
@@ -612,7 +613,7 @@ function viewAluno(){
   ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>`}
  const al=alertas(p.id);
  const fbp=S.fb&&S.sessions.find(x=>x.id===S.fb)?.alunoId===p.id?fbPanel():'';
- return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${fbp}${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
+ return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${fbp}${treinarJunto(p.id)}${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
 /* ================= Render ================= */
 function render0(){
  if(!configOK)return viewConfig();

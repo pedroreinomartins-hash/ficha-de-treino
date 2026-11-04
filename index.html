@@ -234,6 +234,18 @@ button.chipb{cursor:pointer}
 label.btn{cursor:pointer}
 img.av{object-fit:cover;padding:0;background:var(--sunk)}
 .fotoed{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.stud[role=button]{cursor:pointer}
+.qbtn{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:16px;background:var(--sunk);color:var(--ink);border:1.5px solid var(--line)}
+.qbtn.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.livedot{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--good);align-self:flex-start}
+.livedot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good);animation:pulso 1.6s ease-in-out infinite}
+@keyframes pulso{50%{opacity:.25}}
+.andpanel{border-color:var(--accent)}
+.andres{display:flex;flex-direction:column;gap:9px;background:var(--sunk);border-radius:12px;padding:12px}
+.andbar{display:flex;gap:4px}.andbar i{flex:1;height:7px;border-radius:4px;background:var(--line)}
+.andbar i.done{background:var(--good)}.andbar i.part{background:var(--accent-soft)}.andbar i.cur{background:var(--accent)}.andbar i.skip{background:var(--muted);opacity:.5}
+.andtag{font-size:12px;font-weight:600;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:5px 10px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.livedot::before{animation:none}}
 /* Cor de destaque por tema (claro e escuro); --t0 é a cor do treino A. */
 :root[data-theme="light"][data-acento="azul"]{--accent:#2347D6;--accent-soft:#DCE3FB;--on-accent:#FFFFFF;--t0:#2347D6}
 :root[data-theme="light"][data-acento="laranja"]{--accent:#C2410C;--accent-soft:#FDE7D9;--on-accent:#FFFFFF;--t0:#C2410C;--t3:#2347D6}
@@ -311,6 +323,7 @@ button.setrow{width:100%;text-align:left}
 <script src="js/ia.js"></script>
 <script src="js/recursos.js"></script>
 <script src="js/aparencia.js"></script>
+<script src="js/andamento.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
