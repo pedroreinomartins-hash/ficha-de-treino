@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-4';
+const APP_VERSAO='2026.11.04-5';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -273,16 +273,19 @@ function atualizaCargas(a){const f=ficha(a.fichaId);if(!f||!canEdit(f))return;co
 
 /* ================= Peças comuns ================= */
 const IC={
- inicio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/></svg>',
- fichas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+ inicio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ fichas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+ progresso:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg>',
+ perfil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
+ ficha_old:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
  evolucao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>',
  historico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
  alunos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>',
  gestao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
-function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico']]).concat(S.g?[['gestao','Gestão']]:[]);
- const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:'',busca:'',ia:S.ia?.back||'',corridaReg:'inicio'};const cur=S.view in map?map[S.view]:S.view;
+function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Treinos'],['progresso','Progresso'],['perfil','Perfil']]).concat(S.g?[['gestao','Gestão']]:[]);
+ const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:PM()?'':'perfil',busca:'',ia:S.ia?.back||'',corridaReg:'inicio',evolucao:'progresso',historico:'progresso'};const cur=S.view in map?map[S.view]:S.view;
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
 function meChip(){const p=ME()||{id:S.me,nome:'Conta',papel:'aluno'};return `<button class="me" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar(p,'s')}<span>${esc(p.nome)}</span></button>`}
@@ -335,29 +338,70 @@ function fbPanel(){const s=S.sessions.find(x=>x.id===S.fb);if(!s)return '';const
  <div class="field"><span class="lbl">Esforço percebido (1 = muito leve · 10 = máximo)</span><div class="pse">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-act="fbv" data-v="${n}" class="${S.fbv===n?'sel':''}">${n}</button>`).join('')}</div></div>
  <div class="field"><label class="lbl" for="fb-txt">${pc?'Observação sobre o treino (opcional)':'Recado para o Personal (opcional)'}</label><textarea id="fb-txt" class="txt" placeholder="Ex.: senti o joelho no leg press na última série"></textarea></div>
  <div class="nav2"><button class="btn ghost" data-act="fbskip">Pular</button><button class="btn primary" data-act="fbsave">Enviar</button></div></section>`}
+function diaFeito(t){const i=(new Date(t).getDay()+6)%7;return (i>=5?'no ':'na ')+DIAS[i].toLowerCase()}
+function saudacao(){const h=new Date().getHours();return h>=5&&h<12?'Bom dia':h>=12&&h<18?'Boa tarde':'Boa noite'}
+/* Faixa colorida do topo das telas do aluno: marca, saudação/título e o Personal vinculado. */
+function heroTopo(titulo,sub,{personal}={}){const p=ME()||{id:S.me,nome:'',papel:'aluno'};
+ const pid=personal&&p.personalId;const px=pid?(pub(pid)||{nome:nomeP(pid)}):null;
+ const pchip=px?`<button class="hpers" data-act="tab" data-v="perfil">${avatar({id:pid,nome:px.nome||'P',papel:'personal',foto:px.foto},'s')}<span><b>Seu Personal: ${esc(px.nome||'Personal')}</b>${px.cref?`<small>${esc(crefTxt(px))}</small>`:''}</span></button>`:'';
+ return `<header class="hero"><div class="in"><div class="hbar"><span class="hbrand">Pro Treino</span><span class="hsync ${S.cloud?'on':''}" id="syncTag" title="${S.cloud?'Sincronizado':'Sem conexão · salva depois'}"><i></i><span>${S.cloud?'Sincronizado':'Offline'}</span></span><button class="hav" data-act="tab" data-v="perfil" aria-label="Meu perfil">${avatar({...p,id:S.me},'s')}</button></div>
+ <h1>${titulo}</h1>${sub?`<div class="hsub">${sub}</div>`:''}${pchip}</div></header>`}
+function pageHero(titulo,sub,body,o={}){return `${heroTopo(titulo,sub,o)}<main class="wrap pull${o.personal?' deep':''}">${activeBanner()}${body}</main>${tabs()}`}
+const ICK={check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+ play:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
+ halter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+ grafico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg>',
+ relogio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ corrida:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="4.5" r="1.8"/><path d="M8 21l3-6 3 2 1 4M11 15l1-5 4 3h3M12 10l-3-1-3 3"/></svg>',
+ seta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'};
+function ehHoje(t){if(!t?.dia)return false;const i=(new Date().getDay()+6)%7;return nk(t.dia)===nk(DIAS[i])}
+function durMedia(f,t,aid){const ss=sessDe(aid).filter(s=>s.fichaId===f.id&&s.treinoId===t.id&&s.dur>0).slice(0,5);if(!ss.length)return 0;return Math.round(ss.reduce((a,s)=>a+s.dur,0)/ss.length/60)}
 function viewInicio(){
  if(!ME())return page('Conta','Ficha de Treino',`<div class="empty">Seu cadastro não foi encontrado ou foi desativado. Fale com o Personal.</div>`);
  const aid=S.me,f=ativaDe(aid),now=Date.now(),ws=weekStart(now),ss=sessDe(aid);
  const last=ss[0];let check='';
  if(!S.fb&&last&&last.dor24==null&&!myActive()&&now-last.fim>16*3600e3&&now-last.fim<6*DAY)
   check=`<section class="panel"><div class="eyebrow">Joelho · resposta em 24 h</div><h2>Como o joelho ficou depois do treino ${esc(last.letra)} de ${dataLonga(last.inicio)}?</h2><div class="choices">${[['melhor','Melhor'],['igual','Igual'],['pior','Pior']].map(([k,l])=>`<button class="btn ghost" data-act="dor24" data-v="${k}">${l}</button>`).join('')}</div></section>`;
- const recent=ss.slice(0,4).map(itemRow).join('');
- const recentP=`<section class="panel"><div class="eyebrow">Últimos treinos</div>${recent?`<div class="list">${recent}</div>`:`<div class="empty">Seus treinos concluídos aparecem aqui, com duração e carga de cada exercício.</div>`}</section>`;
- if(!f)return page('Olá, '+esc(ME().nome),'Ficha de Treino',`${fbPanel()}${avisosAluno()}${semPersonal()}<div class="empty">Você ainda não tem uma ficha ativa. O Personal pode montar uma para você, ou você mesmo pode criar.<br><br><button class="btn primary" data-act="tab" data-v="fichas">Abrir fichas</button></div>${recentP}`);
- const ni=nextIdx0(f),nt=f.treinos[ni],meta=metaDe(f),wk=weekCount(ws,aid),pw=programWeek(f);
- const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((d,i)=>{const t0=ws+i*DAY;const s=ss.find(x=>x.inicio>=t0&&x.inicio<t0+DAY);const today=now>=t0&&now<t0+DAY;return `<div class="day"><div class="dot ${s?'f':''} ${today&&!s?'today':''}" ${s?`style="background:${lcol(s.letra)}"`:''}>${s?esc(s.letra):''}</div>${d}</div>`}).join('');
- const lastNote=last?.dor24==='pior'&&now-last.fim<7*DAY?`<div class="note bad">Na última avaliação, o joelho piorou nas 24 h seguintes. Reduza a carga ou o volume dos exercícios de perna nesta sessão.</div>`:'';
- const start=nt?`<section class="panel">
-  <div class="row">${letter(LETRAS[ni])}<div class="grow"><div class="eyebrow">${nt.dia?'Próximo treino · sugerido para '+esc(nt.dia.toLowerCase()):'Próximo treino da sequência'}</div><h2>${esc(nt.nome)}</h2><div class="small muted">${nt.tipo==='corrida'?'Corrida · '+esc(corridaResumo(nt)):nt.ex.length+' exercícios · '+totalSets(nt)+' séries'}</div></div></div>
-  ${lastNote}
-  ${temConteudo(nt)?`<button class="btn primary big" data-act="start" data-f="${f.id}" data-v="${nt.id}">Começar treino ${LETRAS[ni]}</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os na aba Fichas.</div>`}
-  <div class="alt">${f.treinos.map((t,i)=>`<button data-act="start" data-f="${f.id}" data-v="${t.id}" ${temConteudo(t)?'':'disabled'}><b>${LETRAS[i]}</b><span>${esc(t.nome)}</span></button>`).join('')}</div>
- </section>`:`<div class="empty">A ficha “${esc(f.nome)}” ainda não tem treinos. Monte o treino A para começar.<br><br><button class="btn primary" data-act="open" data-v="${f.id}">Montar treinos</button></div>`;
- return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${avisosAluno()}${semPersonal()}${myActive()||andOutro()?'':start}${myActive()?'':'<button class="btn ghost" data-act="regnova">+ Registrar corrida avulsa</button>'}${check}
- <section class="panel">
-  <div class="row"><div class="grow"><div class="eyebrow">Esta semana</div><h2><span class="num">${wk}</span> de ${meta} treinos</h2>${wk>=meta?'<span class="chip on" style="display:inline-block;margin-top:6px">Meta cumprida ✓</span>':''}</div><div class="small muted" style="text-align:right">Semana <b class="num" style="font-size:20px;color:var(--ink)">${pw}</b> de ${f.semanas||8}<br>do ciclo</div></div>
-  <div class="week">${days}</div>
- </section>${recentP}`)}
+ const meta=metaDe(f),wk=weekCount(ws,aid);
+ const dias=['S','T','Q','Q','S','S','D'].map((d,i)=>{const t0=ws+i*DAY;const s=ss.find(x=>x.inicio>=t0&&x.inicio<t0+DAY);const hj=now>=t0&&now<t0+DAY;
+  return `<div class="fday ${hj?'hj':''}"><span class="fc ${s?'ok':''}" ${s?`title="Treino ${esc(s.letra)}"`:''}>${s?ICK.check:''}</span>${d}<span class="sr">${DIAS[i]}${s?', treino feito':hj?', hoje':''}</span></div>`}).join('');
+ const freq=`<section class="card freq"><div class="fhead"><h2>Frequência da semana</h2><span class="small muted"><b class="num">${wk}</b> de ${meta} treinos</span></div>
+  <div class="fweek">${dias}</div>${f?`<div class="small muted">${wk>=meta?'<b class="ok">Meta da semana cumprida ✓</b> · ':''}Semana ${programWeek(f)} de ${f.semanas||8} do ciclo</div>`:''}</section>`;
+ const atalhos=`<nav class="atalhos" aria-label="Atalhos">
+  <button data-act="tab" data-v="fichas"><span class="ai">${ICK.halter}</span>Meus treinos</button>
+  <button data-act="psub" data-v="graficos"><span class="ai">${ICK.grafico}</span>Meu progresso</button>
+  <button data-act="psub" data-v="historico"><span class="ai">${ICK.relogio}</span>Histórico</button>
+  <button data-act="regnova" ${myActive()?'disabled':''}><span class="ai">${ICK.corrida}</span>Registrar corrida</button></nav>`;
+ let hoje='';
+ if(!f)hoje=`<section class="card"><h2>Você ainda não tem uma ficha</h2><div class="small muted">O Personal pode montar uma para você, ou você mesmo pode criar a sua.</div><button class="btn primary" data-act="tab" data-v="fichas">Montar minha ficha</button></section>`;
+ else if(!myActive()&&!andOutro()){const ni=nextIdx0(f),nt=f.treinos[ni];
+  if(!nt)hoje=`<section class="card"><h2>A ficha “${esc(f.nome)}” ainda não tem treinos</h2><button class="btn primary" data-act="open" data-v="${f.id}">Montar treinos</button></section>`;
+  else{const hj=ehHoje(nt),dm=durMedia(f,nt,aid);
+   const lastNote=last?.dor24==='pior'&&now-last.fim<7*DAY?`<div class="note bad">Na última avaliação, o joelho piorou nas 24 h seguintes. Reduza a carga ou o volume dos exercícios de perna nesta sessão.</div>`:'';
+   const desc=nt.tipo==='corrida'?'Corrida · '+esc(corridaResumo(nt)):`${nt.ex.length} exercícios${dm?' · cerca de '+dm+' min':' · '+totalSets(nt)+' séries'}`;
+   hoje=`<section class="card"><div class="row">${letter(LETRAS[ni],'l')}<div class="grow"><div class="klabel" style="color:${lcol(LETRAS[ni])}">${hj?'Seu treino de hoje':nt.dia?'Próximo treino · '+esc(nt.dia.toLowerCase()):'Seu próximo treino'}</div><h2>${esc(nt.nome)}</h2><div class="small muted">${desc}</div></div></div>${lastNote}
+   ${temConteudo(nt)?`<button class="btn primary go" data-act="start" data-f="${f.id}" data-v="${nt.id}">${ICK.play}Começar treino</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os em Treinos.</div>`}
+   ${f.treinos.length>1?`<button class="lnk" data-act="tab" data-v="fichas">Prefere outro? Ver ${f.treinos.length===2?'o outro treino':'os outros treinos'}</button>`:''}</section>`}}
+ return pageHero(`${saudacao()}, ${esc(ME().nome)}!`,'',`${fbPanel()}${freq}${avisosAluno()}${semPersonal()}${check}${hoje}${atalhos}`,{personal:true})}
+/* Aba Treinos do aluno: treinos da ficha atual em cartões; demais fichas abaixo. */
+function viewTreinos(){const aid=S.me,f=ativaDe(aid),ws=weekStart(Date.now()),ss=sessDe(aid);
+ let body='';
+ if(f){const ni=nextIdx0(f);
+  const cards=f.treinos.map((t,i)=>{const L=LETRAS[i];const feito=ss.find(s=>s.fichaId===f.id&&s.treinoId===t.id&&weekStart(s.inicio)===ws);const prox=i===ni&&!feito;
+   const st=feito?`feito ${diaFeito(feito.inicio)}`:ehHoje(t)?'sugerido para hoje':t.dia?'sugerido para '+esc(t.dia.toLowerCase()):prox?'próximo da sequência':'';
+   const tag=feito?'<span class="tag ok">Feito</span>':prox?`<span class="tag on" style="background:${lcol(L)}">${ehHoje(t)?'Hoje':'Próximo'}</span>`:'';
+   const exs=t.tipo==='corrida'?`<div class="small muted">${esc(corridaResumo(t))}</div>`:t.ex.map(e=>`<li><span class="grow">${esc(e.n)}</span><span class="muted">${e.s} × ${esc(e.r)}${+e.kg>0?' · '+fmtKg(e.kg)+' kg':''}</span></li>`).join('');
+   return `<details class="tcard ${prox?'prox':''}" ${S.tOpen===t.id?'open':''} data-tid="${t.id}" style="--lc:${lcol(L)}"><summary>${letter(L)}<span class="grow"><b>${esc(t.nome)}</b><span class="small muted">${t.tipo==='corrida'?'Corrida':t.ex.length+' exercícios'}${st?' · '+st:''}</span></span>${tag}<span class="chev">${ICK.seta}</span></summary>
+    <div class="tbody">${t.tipo==='corrida'?exs:`<ol class="exl">${exs||'<li class="muted">Nenhum exercício ainda.</li>'}</ol>`}
+    ${myActive()||andOutro()?'':temConteudo(t)?`<button class="btn primary go" data-act="start" data-f="${f.id}" data-v="${t.id}">${ICK.play}Começar treino ${L}</button>`:''}</div></details>`}).join('');
+  body=`<div class="tlist">${cards||'<div class="empty">Esta ficha ainda não tem treinos.</div>'}</div><div class="small muted" style="padding:0 4px">Toque em um treino para ver os exercícios e começar.</div>
+  ${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Editar ficha atual</button>`:''}`}
+ body+=`<h2 class="sec">${f?'Todas as minhas fichas':'Minhas fichas'}</h2>${fichasList(aid)}`;
+ return pageHero('Meus treinos',f?`Ficha atual: ${esc(f.nome)} · semana ${programWeek(f)} de ${f.semanas||8}`:'Escolha ou crie uma ficha',body)}
+/* Aba Progresso do aluno: gráficos e histórico juntos. */
+function viewProgresso(){const sub=S.psub==='historico'?'historico':'graficos';
+ const st=`<div class="subtabs">${[['graficos','Gráficos'],['historico','Histórico']].map(([k,l])=>`<button data-act="psub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
+ return pageHero('Meu progresso',`${sessDe(S.me).length} treinos registrados`,`${st}${sub==='historico'?historico(S.me):evolucao(S.me)}`)}
 function itemRow(s){if(s.corrida)return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted">${esc(s.treinoNome||'Corrida')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${fmtDist(s.corrida.dist)}</b><div class="small muted">${fmtRitmo(s.corrida.ritmo)}</div></div></div>`;const n=Object.values(s.ex||{}).reduce((a,r)=>a+r.sets.length,0);return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.treinoNome||'')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${Math.round(s.dur/60)} min</b><div class="small muted">${n} séries</div></div></div>`}
 
 /* ================= Lista de fichas (aluno, aluno visto pelo Personal, modelos) ================= */
@@ -371,9 +415,9 @@ function fichasList(owner){
   <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<div class="nav2"><button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button><button class="btn ghost" data-act="iaopen" data-v="${owner}">✦ Criar com IA</button></div>`;
  if(isM&&S.p)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
  const card=f=>{const on=at&&at.id===f.id;const n=S.sessions.filter(s=>s.fichaId===f.id).length;return `<section class="panel" style="gap:10px">
-  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${f.origem==='ia'?' · sugestão de IA':''}${!isM&&f.vence?' · '+esc(venceTxt(f)):''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}${f.alunos?' · disponível aos alunos':' · privado'}`):''}${isM&&!S.g&&!f.global&&f.personalId===S.me?(f.alunos?' · disponível para seus alunos':' · privado'):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
+  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${f.origem==='ia'?' · sugestão de IA':''}${!isM&&f.vence?' · '+esc(venceTxt(f)):''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}${f.alunos?' · disponível aos alunos':' · privado'}`):''}${isM&&!S.g&&!f.global&&f.personalId===S.me?(f.alunos?' · disponível para seus alunos':' · privado'):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Atual':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${f.treinos.map((t,i)=>letter(LETRAS[i],'s')).join('')}</div>
-  <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
+  <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Ficha atual ✓</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Tornar atual</button>`}</div></section>`};
  const ativas=lista.filter(f=>!f.arquivada),arq=lista.filter(f=>f.arquivada);
  const seed=isM&&!fichasDe('modelos').some(f=>f.tpl==='condro'&&(S.g?f.global:f.personalId===S.me))?`<button class="btn dash" data-act="seedm">+ Carregar os 2 modelos iniciais (condropatia e tendinite)</button>`:'';
  return `${nf}${seed}${ativas.map(card).join('')||(S.newF?'':`<div class="empty">${isM?'Nenhum modelo ainda. Modelos servem de base para montar fichas dos alunos.':'Nenhuma ficha ainda.'}</div>`)}${arq.length?`<div class="eyebrow" style="margin-top:6px">Arquivadas</div>${arq.map(card).join('')}`:''}`}
@@ -389,7 +433,7 @@ function viewFicha(){
   <div class="grid2"><div class="field"><label class="lbl" for="f-sem">Duração do ciclo (semanas)</label><input id="f-sem" class="txt" data-ch="fsem" inputmode="numeric" value="${f.semanas||8}"></div><div class="field"><label class="lbl" for="f-meta">Meta semanal</label><select id="f-meta" data-ch="fmeta">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${metaDe(f)===n?'selected':''}>${n}x por semana</option>`).join('')}</select></div></div>
   ${isM?'':`<div class="field"><label class="lbl" for="f-vence">Vencimento da ficha${f.vence?' · '+esc(venceTxt(f)):''}</label><input id="f-vence" class="txt" type="date" data-ch="fvence" value="${esc(f.vence||'')}"><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ghost" data-act="usarciclo">Usar fim do ciclo (${esc(ddmmaa(fimDoCiclo(f)))})</button>${f.vence?'<button class="btn sm ghost" data-act="semvence">Sem vencimento</button>':''}</div></div>`}
   <div class="small muted">${f.treinos.length?`Os treinos se alternam em sequência (${f.treinos.slice(0,3).map((t,i)=>LETRAS[i]).join(', ')}${f.treinos.length>1?', '+LETRAS[0]+'…':' todos os dias'}), sem depender do dia da semana.`:'Ficha vazia: inclua o treino A no fim da página. Os treinos se alternam em sequência (A, B, A…), sem depender do dia da semana.'} A meta define quantas vezes por semana você pretende treinar.</div>
-  ${isM?'':`<div class="nav2">${at?`<button class="btn" disabled>Ficha em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}<button class="btn ghost" data-act="dup" data-v="${f.id}">Duplicar</button></div>`}
+  ${isM?'':`<div class="nav2">${at?`<button class="btn" disabled>Ficha atual ✓</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Tornar atual</button>`}<button class="btn ghost" data-act="dup" data-v="${f.id}">Duplicar</button></div>`}
   ${isPT()&&!isM?`<button class="btn ghost" data-act="tomodel" data-v="${f.id}">Salvar cópia como modelo</button>`:''}
   <div class="nav2">${isM?'<span></span>':`<button class="btn ghost" data-act="arq" data-v="${f.id}">${f.arquivada?'Desarquivar':'Arquivar'}</button>`}${C==='delf'?`<button class="btn danger" data-act="delf" data-v="${f.id}">Confirmar exclusão</button>`:`<button class="btn danger" data-act="conf" data-v="delf">Excluir ${isM?'modelo':'ficha'}</button>`}</div>
   ${C==='delf'?`<div class="note bad">${isM?'O modelo será excluído. Fichas já criadas a partir dele não mudam.':'A ficha será excluída. Os treinos já feitos continuam no histórico.'} <button class="btn sm ghost" data-act="conf" data-v="">Cancelar</button></div>`:''}
@@ -634,10 +678,10 @@ function render0(){
  if(S.g&&v==='gestao')return viewGestao();
  if(v==='treino')return myActive()?.tipo==='corrida'?viewCorrida():viewTreino();
  if(v==='corridaReg')return viewRegistro();
- if(v==='fichas')return page(`${fichasDe(S.me).length} fichas`,'Fichas',fichasList(S.me));
+ if(v==='fichas')return viewTreinos();
+ if(v==='evolucao'||v==='historico'){S.psub=v==='historico'?'historico':'graficos';S.view='progresso'}
+ if(S.view==='progresso')return viewProgresso();
  if(v==='ficha')return viewFicha();
- if(v==='evolucao')return page('Consulta','Evolução',evolucao(S.me));
- if(v==='historico')return page(`${sessDe(S.me).length} treinos`,'Histórico',historico(S.me));
  S.view='inicio';return viewInicio()}
 /* Para os botões − e + : qual valor cada um altera. */
 function alvo(k){const a=S.active;if(!a)return [null];
@@ -712,6 +756,7 @@ document.addEventListener('click',e=>{
   /* navegação */
   case 'tab':go(v);if(v==='treino')keepAwake();break;
   case 'aluno':S.sel=v;S.sub='fichas';S.evoF='ativa';go('aluno');break;
+  case 'psub':S.psub=v;S.confirmDel=null;S.evoF='ativa';if(S.view!=='progresso'){go('progresso')}else render();break;
   case 'sub':S.sub=v;S.imp=null;S.cadMsg='';S.conf=null;S.newF=null;S.confirmDel=null;S.evoF='ativa';render();break;
   case 'start':startSession(b.dataset.f,v);window.scrollTo(0,0);break;
   /* feedback */
@@ -819,3 +864,5 @@ document.addEventListener('click',()=>{const a=myActive();if(a&&!sessaoAudio.ati
 document.addEventListener('submit',e=>{if(e.target.id==='authForm'){e.preventDefault();submitAuth()}});
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});let recarregou=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(recarregou||S.view==='treino')return;recarregou=true;location.reload()})}
 render();initFirebase();
+/* Aba Treinos: lembra qual cartão está aberto entre uma atualização de tela e outra. */
+document.addEventListener('toggle',e=>{const d=e.target;if(!d?.dataset?.tid)return;if(d.open)S.tOpen=d.dataset.tid;else if(S.tOpen===d.dataset.tid)S.tOpen=null},true);
