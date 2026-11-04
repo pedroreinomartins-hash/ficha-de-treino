@@ -78,7 +78,7 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 ### Aparência e foto
 
-- **Tema por modo:** modo aluno escuro; modo Personal claro com destaque azul. Em *Meu perfil → Aparência* dá para fixar sempre claro ou sempre escuro e escolher a cor de destaque do tema escuro: laranja energia (padrão), azul elétrico ou verde-água.
+- **Aparência por modo:** em *Meu perfil → Aparência*, o modo aluno e o modo Personal têm cada um o seu tema (claro, escuro ou automático, que segue o celular) e a sua cor de destaque (laranja, azul, verde-água, roxo ou vermelho), com prévia. Padrão: aluno escuro e laranja; Personal claro e azul. A escolha fica salva na conta.
 - **Foto de perfil:** em *Meu perfil*, adicionar da galeria ou câmera (JPG, PNG, WEBP ou HEIC, convertido no aparelho), ajustar o enquadramento arrastando e com zoom, e salvar reduzida (~256 px, guardada no próprio perfil, sem Firebase Storage). Também dá para usar a foto da conta Google ou remover. Conversão de HEIC: biblioteca heic2any (licença MIT, em `js/vendor`). A foto do Personal aparece na busca.
 
 ### Corrida
@@ -109,7 +109,7 @@ O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA"
 - **Carga visível e editável:** cada exercício tem carga de referência, editável direto na ficha (campo *Carga* na lista) e mostrada no treino. Ao salvar o treino, a maior carga usada vira a nova referência.
 - **Séries editáveis:** toque numa série já registrada para corrigir carga, repetições ou tempo, ou excluí-la. **✎ Ajustar** muda séries, repetições, carga, descanso e técnica no meio do treino, com opção de salvar também na ficha.
 - **Fotos sempre visíveis:** as duas posições do exercício aparecem no card (toque para ampliar); o passo a passo fica em *Como executar*. Miniaturas também na ficha e na lista do treino.
-- **Pular exercício:** botão *Pular este exercício* ou *☰ Lista do treino*, com marcação de cada um. Os pulados ficam no histórico e aparecem como alerta para o Personal.
+- **Lista do treino (☰) com ✓ e ✕:** ✓ marca o exercício como feito e grava as séries que faltam com a carga e as repetições previstas (toque numa série para corrigir); ✕ pula o exercício. Tocar de novo desfaz. Também há o botão *Pular este exercício*. Os pulados ficam no histórico e aparecem como alerta para o Personal.
 - **Técnicas avançadas** (campo *Técnica* do exercício): drop-set e rest-pause/cluster registram blocos extras na mesma série (com pausa curta cronometrada); bi-set e tri-set encadeiam os exercícios sem descanso entre eles; pirâmides, negativa e FST-7 mostram a orientação.
 - **Meta semanal:** ao concluir o treino, o app mostra o progresso da semana e parabeniza quando a meta é cumprida.
 

@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-2';
+const APP_VERSAO='2026.11.04-3';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -251,7 +251,7 @@ function subLog(){const a=S.active,ex=curEx(),r=rec(ex),ls=r.sets[r.sets.length-
  const tc=TECNICAS[ex.tec];if(tc?.sub==='drop')a.subd.kg=Math.round((+a.subd.kg||0)*.75*2)/2;if(tc?.pausa){a.miniEnd=Date.now()+tc.pausa*1000;a.miniTot=tc.pausa;a.miniAlert=false}saveActive();render()}
 function finishHold(){const a=S.active;if(!a?.holdEnd)return;const sec=a.holdSec;a.holdEnd=null;alertaSom('fimTempo',{texto:'Tempo! Série concluída.'});logSet({sec})}
 function endSession(keep){const a=S.active;releaseAwake();sessaoAudio.parar();if(keep)alertaSom('fim',{texto:'Treino concluído. Parabéns!'});
- if(keep){const ex={};for(const[k,v]of Object.entries(a.ex))if(v.sets.length)ex[k]={n:v.n,sets:v.sets.map(({t,...x})=>x),dor:v.dor};const fim=Date.now();
+ if(keep){const ex={};for(const[k,v]of Object.entries(a.ex))if(v.sets.length)ex[k]={n:v.n,sets:v.sets.map(({t,a,...x})=>x),dor:v.dor};const fim=Date.now();
   const s={id:a.id,alunoId:a.alunoId,fichaId:a.fichaId,treinoId:a.treinoId,letra:a.letra,treinoNome:a.treinoNome,inicio:a.inicio,fim,dur:Math.round((fim-a.inicio)/1000),ex,dor24:null,feedback:null};
   const pul=a.exList.filter(e=>a.skip?.[e.id]&&!(a.ex[e.id]?.sets.length)).map(e=>e.n);if(pul.length)s.pulados=pul;
   if(a.cond){s.conduzidoPor=a.cond;s.conduzidoNome=a.condNome}
@@ -453,8 +453,8 @@ function viewTreino(){
  </main>${a.restEnd?restSheet():''}`}
 /* Lista do treino com marcação para pular exercícios. */
 function exLista(){const a=S.active,L=a.exList;if(!S.exl)return `<button class="btn sm ghost" data-act="exl" style="align-self:flex-start">☰ Lista do treino</button>`;
- return `<section class="panel" style="gap:4px"><div class="row"><div class="eyebrow grow">Lista do treino · marque para pular</div><button class="btn sm ghost" data-act="exl">Fechar</button></div>
- ${L.map((e,i)=>{const n=a.ex[e.id]?.sets.length||0,pk=isSkip(e),m=media(e.n);return `<div class="exrow">${m?`<img class="thumb" src="${IMG_BASE+m.img[0]}" alt="" loading="lazy">`:`<span class="n">${i+1}</span>`}<button class="grow" style="text-align:left" data-act="go" data-v="${i}"><b style="${pk?'text-decoration:line-through;opacity:.6':''}">${esc(e.n)}</b><div class="meta">${n}/${e.s} séries${e.tec?' · '+esc(tecNome(e.tec)):''}${+e.kg>0?' · '+fmtKg(e.kg)+' kg':''}</div></button>${n>=e.s?'<span class="chip on">Feito</span>':`<label class="check"><input type="checkbox" data-act="skipchk" data-v="${e.id}" ${pk?'checked':''}>Pular</label>`}</div>`}).join('')}</section>`}
+ return `<section class="panel" style="gap:4px"><div class="row"><div class="eyebrow grow">Lista do treino · ✓ feito · ✕ pular</div><button class="btn sm ghost" data-act="exl">Fechar</button></div>
+ ${L.map((e,i)=>{const n=a.ex[e.id]?.sets.length||0,pk=isSkip(e),m=media(e.n);return `<div class="exrow">${m?`<img class="thumb" src="${IMG_BASE+m.img[0]}" alt="" loading="lazy">`:`<span class="n">${i+1}</span>`}<button class="grow" style="text-align:left" data-act="go" data-v="${i}"><b style="${pk?'text-decoration:line-through;opacity:.6':''}">${esc(e.n)}</b><div class="meta">${n}/${e.s} séries${e.tec?' · '+esc(tecNome(e.tec)):''}${+e.kg>0?' · '+fmtKg(e.kg)+' kg':''}</div></button><div class="okbs"><button class="okb ok ${n>=e.s?'on':''}" data-act="exok" data-v="${e.id}" aria-pressed="${n>=e.s}" aria-label="Marcar ${esc(e.n)} como feito">✓</button><button class="okb off ${pk?'on':''}" data-act="exoff" data-v="${e.id}" aria-pressed="${pk}" aria-label="Pular ${esc(e.n)}">✕</button></div></div>`}).join('')}</section>`}
 /* Editar uma série já registrada. */
 function setEditor(ex,x){const D=S.eset.d;const ins=x.sec!=null?`<div class="steppers" style="grid-template-columns:1fr">${stepper('esec','Tempo (min:seg)',fmtMS(D.sec),15)}</div>`:`<div class="steppers">${stepper('ekg','Carga (kg)',fmtKg(D.kg),2.5)}${stepper('ereps','Repetições',D.reps,1)}</div>`;
  return `<div class="form" style="gap:10px"><div class="eyebrow">Editar série ${S.eset.i+1}${x.x?.length?' · drops/blocos mantidos':''}</div>${ins}<div class="nav2"><button class="btn ghost" data-act="esetno">Cancelar</button><button class="btn primary" data-act="esetok">Salvar</button></div><button class="btn sm ghost" style="color:var(--bad)" data-act="esetdel">Excluir esta série</button></div>`}
@@ -621,8 +621,6 @@ function render0(){
  if(v==='evolucao')return page('Consulta','Evolução',evolucao(S.me));
  if(v==='historico')return page(`${sessDe(S.me).length} treinos`,'Histórico',historico(S.me));
  S.view='inicio';return viewInicio()}
-function aplicaTema(){const pref=LS.get('ft6.tema','auto');const escuro=pref==='escuro'||(pref==='auto'&&!(S.me&&S.ready&&PM()));
- const el=document.documentElement;const t=escuro?'dark':'light';const ac=LS.get('ft6.acento','laranja');if(el.getAttribute('data-acento')!==ac)el.setAttribute('data-acento',ac);if(el.getAttribute('data-theme')!==t){el.setAttribute('data-theme',t);const m=document.querySelector('meta[name=theme-color]');if(m)m.content=escuro?'#0E1217':'#2347D6'}}
 /* Para os botões − e + : qual valor cada um altera. */
 function alvo(k){const a=S.active;if(!a)return [null];
  if(k==='dkg'||k==='dreps')return [a.subd,k.slice(1)];
@@ -747,6 +745,14 @@ document.addEventListener('click',e=>{
    S.adj=null;saveActive();render();toast(msg);break}
   case 'skip':{const ex=curEx();a.skip=a.skip||{};a.skip[ex.id]=1;a.restEnd=null;a.sub=null;if(!a.exList.every(isDone))a.idx=nextIdx(a.idx);saveActive();render();window.scrollTo(0,0);toast('“'+ex.n+'” pulado.');break}
   case 'unskip':{a.skip=a.skip||{};delete a.skip[v];saveActive();render();break}
+  case 'exok':{const ex=a.exList.find(x=>x.id===v);if(!ex)break;const r=rec(ex);a.skip=a.skip||{};
+   if(r.sets.length>=ex.s){if(r.sets.some(x=>x.a)){r.sets=r.sets.filter(x=>!x.a);toast('Desmarcado: “'+ex.n+'” voltou a ficar pendente.')}else toast('Este exercício foi registrado série a série. Para corrigir, toque na série.');saveActive();render();break}
+   delete a.skip[ex.id];const d=draft(ex);while(r.sets.length<ex.s)r.sets.push(ex.tipo==='t'?{sec:+d.sec||ex.hold||30,a:1,t:Date.now()}:{kg:+d.kg||0,reps:+d.reps||firstNum(ex.r),a:1,t:Date.now()});
+   if(a.sub?.ex===ex.id){a.sub=null;a.miniEnd=null}if(a.restEx===ex.id)a.restEnd=null;saveActive();render();toast('“'+ex.n+'” feito: '+ex.s+' séries com os valores previstos. Toque numa série para corrigir.');break}
+  case 'exoff':{const ex=a.exList.find(x=>x.id===v);if(!ex)break;const r=rec(ex);a.skip=a.skip||{};
+   if(a.skip[ex.id]&&r.sets.length<ex.s){delete a.skip[ex.id];saveActive();render();break}
+   if(r.sets.length>=ex.s){if(!r.sets.some(x=>x.a)){toast('Este exercício já foi concluído.');break}r.sets=r.sets.filter(x=>!x.a)}
+   a.skip[ex.id]=1;if(a.sub?.ex===ex.id){a.sub=null;a.miniEnd=null}saveActive();render();break}
   case 'skipchk':{a.skip=a.skip||{};if(a.skip[v])delete a.skip[v];else a.skip[v]=1;if(curEx().id===v&&a.skip[v]){a.sub=null}saveActive();render();break}
   case 'exl':S.exl=!S.exl;render();break;
   case 'sublog':subLog();break;

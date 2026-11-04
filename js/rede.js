@@ -108,8 +108,7 @@ function viewPerfil(){const p=ME()||{nome:'',email:''};
  const head=`<section class="panel">${fotoBox}<div class="field"><label class="lbl" for="pf-nome">Nome exibido</label><input id="pf-nome" class="txt" data-ch="meunome" value="${esc(p.nome)}"></div><div class="small muted">E-mail: ${esc(p.email||'—')}</div><div class="field"><label class="lbl" for="pf-nasc">Data de nascimento (opcional)</label><input id="pf-nasc" class="txt" type="date" data-ch="meunasc" value="${esc(p.nasc||'')}"><div class="small muted">Visível só para você, seu Personal e o gestor. Usada para lembrar o seu aniversário.</div></div>${verifBox()}</section>`;
  const modo=S.p?`<section class="panel" style="gap:8px"><div class="eyebrow">Como usar o app agora</div><div class="seg" style="grid-template-columns:1fr 1fr"><button data-act="modo" data-v="personal" class="${PM()?'on':''}">Modo Personal</button><button data-act="modo" data-v="aluno" class="${PM()?'':'on'}">Modo aluno (meus treinos)</button></div></section>`:'';
  const corpo=PM()?`<section class="panel"><div class="eyebrow">Acesso de Personal</div>${codigoCard()||'<div class="small muted">Código em preparação.</div>'}</section>${perfilPublicoForm()}${sonsBox()}`:meuPersonalBox()+sonsBox()+tenisBox()+(S.p?'':souPersonalBox());
- return page(S.g?'Gestor':PM()?'Personal':'Aluno','Meu perfil',`${head}${modo}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div><section class="panel"><div class="eyebrow">Aparência</div><div class="field"><label class="lbl" for="tema-sel">Tema</label><select id="tema-sel" data-tema="1">${[['auto','Automático: aluno escuro, Personal claro'],['escuro','Sempre escuro'],['claro','Sempre claro']].map(([k,l])=>`<option value="${k}" ${LS.get('ft6.tema','auto')===k?'selected':''}>${l}</option>`).join('')}</select></div>
-  <div class="field"><span class="lbl">Cor de destaque do tema escuro</span><div class="row" style="gap:10px;flex-wrap:wrap">${[['laranja','Laranja energia','#FF7A1A'],['azul','Azul elétrico','#5B86FF'],['verde','Verde-água','#2CC9B4']].map(([k,l,c])=>`<button class="swatch ${LS.get('ft6.acento','laranja')===k?'on':''}" data-act="acento" data-v="${k}" aria-pressed="${LS.get('ft6.acento','laranja')===k}"><i style="background:${c}"></i>${l}</button>`).join('')}</div></div></section><button class="btn danger" data-act="logout">Sair da conta</button><div class="small muted" style="text-align:center">Versão ${APP_VERSAO}</div>`)}
+ return page(S.g?'Gestor':PM()?'Personal':'Aluno','Meu perfil',`${head}${modo}${corpo}<div class="row" style="gap:16px;justify-content:center" class="small"><a class="small" href="termos.html" target="_blank" rel="noopener">Termos de Uso</a><a class="small" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div>${aparenciaBox()}<button class="btn danger" data-act="logout">Sair da conta</button><div class="small muted" style="text-align:center">Versão ${APP_VERSAO}</div>`)}
 
 /* ---------- Perfil público do Personal ---------- */
 function ppDraft(){if(!S.pp){const d=S.pdoc||{};const m=String(d.cref||'').match(/^(\d+)-?([GP])\/?([A-Z]{2})$/)||[];
@@ -403,12 +402,11 @@ function cropLiga(){const cv=$('#crop-cv');if(!cv||!S.crop)return;cropDesenha(cv
 async function fotoSalva(url){const p=ME();p.foto=url;await putNow('perfis',p);if(S.p)try{await fdb.collection('personais').doc(S.me).update({foto:url});if(S.pdoc)S.pdoc.foto=url}catch(e){console.warn(e)}}
 document.addEventListener('change',async e=>{const el=e.target;
  if(el.id==='ft-arq'&&el.files?.[0]){S.fotoErr='';try{const img=await abreImagem(el.files[0]);S.crop={img,zoom:1,cx:.5,cy:.5}}catch(err){S.fotoErr=err.message}S.fotoMsg='';render()}
- if(el.dataset.tema){LS.set('ft6.tema',el.value);render()}});
+});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
  switch(b.dataset.act){
   case 'ftsave':{if(!S.crop)break;const u=cropFinal();S.crop=null;fotoSalva(u).then(()=>{toast('Foto atualizada.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});render();break}
   case 'ftcancel':S.crop=null;render();break;
   case 'ftgoogle':fotoSalva(fbAuth.currentUser.photoURL).then(()=>{toast('Foto do Google aplicada.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});break;
   case 'ftdel':fotoSalva('').then(()=>{toast('Foto removida.');render()}).catch(err=>{S.fotoErr=errMsg(err);render()});break;
-  case 'acento':LS.set('ft6.acento',b.dataset.v);render();break;
  }});
