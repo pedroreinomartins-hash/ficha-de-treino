@@ -111,7 +111,9 @@ service cloud.firestore {
         || (signed() && antigo().get('alunoId', '') == me())
         || (signed() && antigo().get('global', false) == true)
         || (isP() && pid(antigo()) == me())
-        || (signed() && antigo().get('modelo', false) == true && pid(antigo()) != '' && pid(antigo()) == myPersonal());
+        // Modelo do Personal: só para os alunos dele, e só se ele marcar "Disponível para meus alunos".
+        || (signed() && antigo().get('modelo', false) == true && antigo().get('alunos', false) == true
+            && pid(antigo()) != '' && pid(antigo()) == myPersonal());
       allow create, update: if isG()
         || (signed() && novo().get('alunoId', '') == me()
             && novo().get('modelo', false) != true && novo().get('global', false) != true

@@ -24,3 +24,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 ## Concluído
 
 - **03/11/2026 · Rodadas 1 e 2 (sugestões do Carlos Igor):** carga visível e editável na ficha; edição das séries e ajuste do exercício durante o treino, salvando na ficha; fotos sempre visíveis; pular exercício; técnicas avançadas (drop-set, bi-set, tri-set, rest-pause, cluster, pirâmides, negativa, FST-7); mensagem de meta semanal; data de nascimento e aviso de aniversário; vencimento da ficha; treinos de hoje em tempo real no painel do Personal; Personal conduzindo o treino do aluno no próprio celular.
+- **04/11/2026 · Fichas:** ficha vazia sem treinos; modelos do Personal privados por padrão, com a opção “Disponível para meus alunos” (regras do Firestore atualizadas).

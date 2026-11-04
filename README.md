@@ -59,7 +59,8 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
   - o **Personal convida** por e-mail ou cadastrando o aluno, e o aluno aceita ou recusa em **Meu perfil**, marcando a autorização de acesso aos dados (consentimento registrado com data e texto, conforme a LGPD).
 - **Encerrar:** aluno (Meu perfil) ou Personal (aluno → Cadastro) encerram a qualquer momento; o Personal perde o acesso na hora.
 - **Transferir:** o gestor pode mudar o Personal responsável em **Gestão → Alunos → aluno → Cadastro**, com a concordância do aluno.
-- **Modelos:** cada Personal tem os próprios; os do gestor ficam disponíveis para todos.
+- **Modelos e visibilidade:** o aluno vê as fichas que ele mesmo criou, as que o Personal montou para ele, os modelos básicos do app e os do gestor (para todos). Os modelos do Personal são privados por padrão; marcando **Disponível para meus alunos** no modelo, eles passam a aparecer para os alunos dele em *Nova ficha → Começar com*. Fichas de um aluno nunca aparecem para outros alunos.
+- **Ficha vazia:** começa sem nenhum treino; os treinos A, B, C… são incluídos no editor.
 
 ### Perfil público, academias e busca
 
@@ -70,6 +71,7 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 ### Fichas, metas e modelos básicos
 
+- **Atenção ao atualizar:** sempre que `firestore.rules` mudar, cole o arquivo novo em *Firestore Database → Regras* e clique em **Publicar**.
 - **Meta semanal editável** (1 a 7 treinos por semana) em cada ficha. Os treinos se alternam em sequência (A, B, A…), sem depender do dia da semana: uma ficha A/B pode ser feita todos os dias.
 - **Modelos básicos do app**, disponíveis para todos em *Nova ficha → Começar com*: Full Body básico, Full Body A/B, Superior e Inferior, ABC clássico (peito/ombros/tríceps · dorsal/bíceps · pernas) e Iniciante 2x. Descanso sugerido de 60 s nos compostos e 45 s nos isoladores.
 - **Tempos em minutos:** descanso e tempo de exercício são digitados em min:seg (1:00 = 1 minuto; 0:45 = 45 segundos; 2 = 2 minutos).

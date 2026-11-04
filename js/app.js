@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.03-1';
+const APP_VERSAO='2026.11.04-1';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -147,7 +147,7 @@ async function onAuth(u){
 let modP={pid:null,un:null};
 function syncModP(){if(S.g)return;const pid=ME()?.personalId||'';if(pid===modP.pid)return;
  if(modP.un)modP.un();delete SRC.modelosP;modP={pid,un:null};
- if(pid)modP.un=fdb.collection('fichas').where('modelo','==',true).where('personalId','==',pid).onSnapshot(sn=>{SRC.modelosP={c:'fichas',docs:sn.docs.map(d=>NORM.fichas({...d.data(),id:d.id}))};merge('fichas');soft()},e=>console.warn(e));
+ if(pid)modP.un=fdb.collection('fichas').where('modelo','==',true).where('personalId','==',pid).where('alunos','==',true).onSnapshot(sn=>{SRC.modelosP={c:'fichas',docs:sn.docs.map(d=>NORM.fichas({...d.data(),id:d.id}))};merge('fichas');soft()},e=>console.warn(e));
  else merge('fichas')}
 function merge(c){const m=new Map();Object.values(SRC).filter(x=>x.c===c).forEach(x=>x.docs.forEach(d=>m.set(d.id,d)));S[c]=[...m.values()];if(c==='sessions')sortS()}
 function listen(key,c,ref){unsubs.push(ref.onSnapshot(sn=>{
@@ -188,7 +188,9 @@ const PM=()=>S.p&&S.modo!=='aluno';
 const canEdit=f=>!f.modelo||S.g||(!f.global&&f.personalId===S.me);
 const alunos=(todos)=>S.perfis.filter(p=>(p.papel==='aluno'||!!p.personalId)&&!(PM()&&p.id===S.me)&&(todos||p.ativo!==false)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
 const ficha=id=>S.fichas.find(f=>f.id===id);
-const fichasDe=o=>o==='modelos'?S.fichas.filter(f=>f.modelo):S.fichas.filter(f=>f.alunoId===o&&!f.modelo);
+/* Modelos visíveis: gestor vê todos; Personal vê os globais e os próprios; aluno vê os globais e os que o Personal dele disponibilizou. */
+const modeloVisivel=f=>S.g||f.global||(PM()||S.p)&&f.personalId===S.me||(f.alunos===true&&f.personalId&&f.personalId===ME()?.personalId);
+const fichasDe=o=>o==='modelos'?S.fichas.filter(f=>f.modelo&&modeloVisivel(f)):S.fichas.filter(f=>f.alunoId===o&&!f.modelo);
 const sessDe=aid=>S.sessions.filter(s=>s.alunoId===aid);
 function ativaDe(aid){const p=perfil(aid),f=p&&ficha(p.ativa);return f&&!f.arquivada&&f.alunoId===aid?f:null}
 function setAtiva(aid,fid){const p=perfil(aid);if(!p)return;p.ativa=fid;put('perfis',p)}
@@ -333,7 +335,7 @@ function viewInicio(){
   ${lastNote}
   ${temConteudo(nt)?`<button class="btn primary big" data-act="start" data-f="${f.id}" data-v="${nt.id}">Começar treino ${LETRAS[ni]}</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os na aba Fichas.</div>`}
   <div class="alt">${f.treinos.map((t,i)=>`<button data-act="start" data-f="${f.id}" data-v="${t.id}" ${temConteudo(t)?'':'disabled'}><b>${LETRAS[i]}</b><span>${esc(t.nome)}</span></button>`).join('')}</div>
- </section>`:`<div class="empty">A ficha ativa não tem treinos. <button class="btn sm primary" data-act="open" data-v="${f.id}">Editar ficha</button></div>`;
+ </section>`:`<div class="empty">A ficha “${esc(f.nome)}” ainda não tem treinos. Monte o treino A para começar.<br><br><button class="btn primary" data-act="open" data-v="${f.id}">Montar treinos</button></div>`;
  return page(esc(f.nome),'Olá, '+esc(ME().nome),`${fbPanel()}${avisosAluno()}${semPersonal()}${myActive()?'':start}${myActive()?'':'<button class="btn ghost" data-act="regnova">+ Registrar corrida avulsa</button>'}${check}
  <section class="panel">
   <div class="row"><div class="grow"><div class="eyebrow">Esta semana</div><h2><span class="num">${wk}</span> de ${meta} treinos</h2>${wk>=meta?'<span class="chip on" style="display:inline-block;margin-top:6px">Meta cumprida ✓</span>':''}</div><div class="small muted" style="text-align:right">Semana <b class="num" style="font-size:20px;color:var(--ink)">${pw}</b> de ${f.semanas||8}<br>do ciclo</div></div>
@@ -348,11 +350,11 @@ function fichasList(owner){
  if(isPT())alunos(true).filter(p=>p.id!==owner).forEach(p=>{const l=fichasDe(p.id);if(l.length)opts.push(['Fichas de '+p.nome,l])});
  const nf=S.newF&&S.newF.owner===owner?`<section class="form"><h3>${isM?'Novo modelo':'Nova ficha'}</h3>
   <div class="field"><label class="lbl" for="nf-nome">Nome</label><input id="nf-nome" class="txt" data-nf="nome" value="${esc(S.newF.nome)}" placeholder="Ex.: Ciclo 2 – hipertrofia"></div>
-  <div class="field"><label class="lbl" for="nf-base">Começar com</label><select id="nf-base" data-nf="base"><option value="">Ficha vazia (3 treinos: A, B e C)</option>${opts.filter(o=>o[1].length).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(f=>`<option value="${f.id}" ${S.newF.base===f.id?'selected':''}>${esc(f.nome)}${f.basico?' · '+f.treinos.length+' treino'+(f.treinos.length>1?'s':'')+', meta '+f.meta+'x/sem.':''}</option>`).join('')}</optgroup>`).join('')}</select>${basico(S.newF.base)?`<div class="small muted">${esc(basico(S.newF.base).desc)}</div>`:''}</div>
+  <div class="field"><label class="lbl" for="nf-base">Começar com</label><select id="nf-base" data-nf="base"><option value="">Ficha vazia (sem treinos)</option>${opts.filter(o=>o[1].length).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(f=>`<option value="${f.id}" ${S.newF.base===f.id?'selected':''}>${esc(f.nome)}${f.basico?' · '+f.treinos.length+' treino'+(f.treinos.length>1?'s':'')+', meta '+f.meta+'x/sem.':''}</option>`).join('')}</optgroup>`).join('')}</select>${basico(S.newF.base)?`<div class="small muted">${esc(basico(S.newF.base).desc)}</div>`:''}</div>
   <div class="nav2"><button class="btn ghost" data-act="nfcancel">Cancelar</button><button class="btn primary" data-act="nfsave">Criar</button></div></section>`:`<div class="nav2"><button class="btn primary" data-act="nfopen" data-v="${owner}">+ ${isM?'Novo modelo':'Nova ficha'}</button><button class="btn ghost" data-act="iaopen" data-v="${owner}">✦ Criar com IA</button></div>`;
  if(isM&&S.p)lista.sort((a,b)=>(a.global?1:0)-(b.global?1:0));
  const card=f=>{const on=at&&at.id===f.id;const n=S.sessions.filter(s=>s.fichaId===f.id).length;return `<section class="panel" style="gap:10px">
-  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${f.origem==='ia'?' · sugestão de IA':''}${!isM&&f.vence?' · '+esc(venceTxt(f)):''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}`):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
+  <div class="row"><div class="grow"><h2>${esc(f.nome)}</h2><div class="small muted">${f.treinos.length} treinos · ${f.treinos.reduce((a,t)=>a+t.ex.length,0)} exercícios${isM?'':` · ${n} sessões`}${f.autor?` · por ${esc(f.autor)}`:''}${f.origem==='ia'?' · sugestão de IA':''}${!isM&&f.vence?' · '+esc(venceTxt(f)):''}${isM&&S.g?(f.global?' · para todos':` · de ${esc(nomeP(f.personalId))}${f.alunos?' · disponível aos alunos':' · privado'}`):''}${isM&&!S.g&&!f.global&&f.personalId===S.me?(f.alunos?' · disponível para seus alunos':' · privado'):''}</div></div>${isM?'':`<span class="chip ${on?'on':''}">${on?'Ativa':f.arquivada?'Arquivada':'Disponível'}</span>`}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${f.treinos.map((t,i)=>letter(LETRAS[i],'s')).join('')}</div>
   <div class="nav2">${canEdit(f)?`<button class="btn ghost" data-act="open" data-v="${f.id}">Ver e editar</button>`:`<span class="small muted" style="align-self:center">Modelo da plataforma</span>`}${isM?`<button class="btn primary" data-act="nfopen" data-v="${owner}" data-b="${f.id}">Duplicar</button>`:on?`<button class="btn" disabled>Em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}</div></section>`};
  const ativas=lista.filter(f=>!f.arquivada),arq=lista.filter(f=>f.arquivada);
@@ -378,9 +380,11 @@ function viewFicha(){
  const iaNota=f.origem==='ia'?`<div class="note warn">Ficha sugerida por IA${f.autor?' e criada por '+esc(f.autor):''}. Revise com um Personal ou profissional de saúde, principalmente se houver lesões ou dores.</div>`:'';
  const head=`<section class="panel">
   <div class="field"><label class="lbl" for="f-nome">Nome da ficha</label><input id="f-nome" class="txt" data-ch="fnome" value="${esc(f.nome)}"></div>
+  ${isM&&!f.global&&f.personalId===S.me?`<label class="check"><input type="checkbox" data-ch="falunos" ${f.alunos?'checked':''}>Disponível para meus alunos</label><div class="small muted">${f.alunos?'Seus alunos podem usar este modelo como base em “Nova ficha”.':'Privado: só você vê este modelo. Marque para que seus alunos possam usá-lo como base.'}</div>`:''}
+  ${isM&&f.global?'<div class="small muted">Modelo da plataforma, disponível para todos os usuários.</div>':''}
   <div class="grid2"><div class="field"><label class="lbl" for="f-sem">Duração do ciclo (semanas)</label><input id="f-sem" class="txt" data-ch="fsem" inputmode="numeric" value="${f.semanas||8}"></div><div class="field"><label class="lbl" for="f-meta">Meta semanal</label><select id="f-meta" data-ch="fmeta">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${metaDe(f)===n?'selected':''}>${n}x por semana</option>`).join('')}</select></div></div>
   ${isM?'':`<div class="field"><label class="lbl" for="f-vence">Vencimento da ficha${f.vence?' · '+esc(venceTxt(f)):''}</label><input id="f-vence" class="txt" type="date" data-ch="fvence" value="${esc(f.vence||'')}"><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ghost" data-act="usarciclo">Usar fim do ciclo (${esc(ddmmaa(fimDoCiclo(f)))})</button>${f.vence?'<button class="btn sm ghost" data-act="semvence">Sem vencimento</button>':''}</div></div>`}
-  <div class="small muted">Os treinos se alternam em sequência (${f.treinos.slice(0,3).map((t,i)=>LETRAS[i]).join(', ')}${f.treinos.length>1?', '+LETRAS[0]+'…':' todos os dias'}), sem depender do dia da semana. A meta define quantas vezes por semana você pretende treinar.</div>
+  <div class="small muted">${f.treinos.length?`Os treinos se alternam em sequência (${f.treinos.slice(0,3).map((t,i)=>LETRAS[i]).join(', ')}${f.treinos.length>1?', '+LETRAS[0]+'…':' todos os dias'}), sem depender do dia da semana.`:'Ficha vazia: inclua o treino A no fim da página. Os treinos se alternam em sequência (A, B, A…), sem depender do dia da semana.'} A meta define quantas vezes por semana você pretende treinar.</div>
   ${isM?'':`<div class="nav2">${at?`<button class="btn" disabled>Ficha em uso</button>`:`<button class="btn primary" data-act="ativar" data-v="${f.id}">Usar esta ficha</button>`}<button class="btn ghost" data-act="dup" data-v="${f.id}">Duplicar</button></div>`}
   ${isPT()&&!isM?`<button class="btn ghost" data-act="tomodel" data-v="${f.id}">Salvar cópia como modelo</button>`:''}
   <div class="nav2">${isM?'<span></span>':`<button class="btn ghost" data-act="arq" data-v="${f.id}">${f.arquivada?'Desarquivar':'Arquivar'}</button>`}${C==='delf'?`<button class="btn danger" data-act="delf" data-v="${f.id}">Confirmar exclusão</button>`:`<button class="btn danger" data-act="conf" data-v="delf">Excluir ${isM?'modelo':'ficha'}</button>`}</div>
@@ -648,7 +652,7 @@ function render(){
 }
 const go=v=>{S.view=v;S.pf=null;S.gmsg=null;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
 function findEx(f,tid,eid){const t=f.treinos.find(x=>x.id===tid);return {t,i:t?t.ex.findIndex(e=>e.id===eid):-1}}
-function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,arquivada:false,basico:false,criada:Date.now(),modelo:owner==='modelos',global:owner==='modelos'&&S.g,alunoId:owner==='modelos'?null:owner,autor:ME().nome,tpl:null};delete nf._p;delete nf._seed;delete nf.personalId;delete nf.basico;delete nf.desc;
+function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,arquivada:false,basico:false,criada:Date.now(),modelo:owner==='modelos',global:owner==='modelos'&&S.g,alunoId:owner==='modelos'?null:owner,autor:ME().nome,tpl:null};delete nf._p;delete nf._seed;delete nf.personalId;delete nf.basico;delete nf.desc;delete nf.alunos;
  nf.treinos=nf.treinos.map(t=>({...t,id:uid('t'),ex:t.ex.map(x=>({...x,id:uid('e')}))}));return nf}
 function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='gestao'?'gestao':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;render();window.scrollTo(0,0)}
 function curFicha(){return ficha(S.edit)}
@@ -673,6 +677,7 @@ document.addEventListener('change',e=>{const el=e.target,ch=el.dataset.ch;
  const f=curFicha();if(!f)return;
  if(ch==='fnome'){const v=el.value.trim();if(v)f.nome=v}
  if(ch==='fsem'){const v=parseInt(el.value,10);if(v>0&&v<53)f.semanas=v}
+ if(ch==='falunos'){f.alunos=el.checked;saveF(f);render();toast(el.checked?'Modelo disponível para os seus alunos.':'Modelo privado: só você vê.');return}
  if(ch==='fmeta'){const v=parseInt(el.value,10);if(v>=1&&v<=7)f.meta=v}
  if(ch==='exkg'){const t=f.treinos.find(x=>x.id===el.dataset.t),x=t?.ex.find(y=>y.id===el.dataset.e);if(x){const v=parseFloat(el.value.replace(',','.'));if(v>0)x.kg=Math.round(v*10)/10;else delete x.kg}}
  if(ch==='fvence'){if(dataLocal(el.value))f.vence=el.value;else delete f.vence;saveF(f);render();return}
@@ -717,7 +722,7 @@ document.addEventListener('click',e=>{
   case 'nfopen':S.newF={nome:'',base:b.dataset.b||'',owner:v};render();setTimeout(()=>$('#nf-nome')?.focus(),0);break;
   case 'nfcancel':S.newF=null;render();break;
   case 'nfsave':{const o=S.newF.owner,base=ficha(S.newF.base)||basico(S.newF.base);const nome=S.newF.nome.trim()||(base?(base.basico?base.nome:'Cópia de '+base.nome):'Nova ficha');
-   const nf=base?copyFicha(base,o,nome):{id:uid('f'),nome,semanas:8,arquivada:false,criada:Date.now(),modelo:o==='modelos',global:o==='modelos'&&S.g,alunoId:o==='modelos'?null:o,autor:ME().nome,mig1:1,meta:3,treinos:['Segunda','Quarta','Sexta'].map((d,i)=>({id:uid('t'),nome:'Treino '+LETRAS[i],dia:d,ex:[]}))};
+   const nf=base?copyFicha(base,o,nome):{id:uid('f'),nome,semanas:8,arquivada:false,criada:Date.now(),modelo:o==='modelos',global:o==='modelos'&&S.g,alunoId:o==='modelos'?null:o,autor:ME().nome,mig1:1,meta:3,treinos:[]};
    saveF(nf);if(o!=='modelos'&&!ativaDe(o))setAtiva(o,nf.id);S.newF=null;openEditor(nf.id);break}
   case 'open':openEditor(v);break;
   case 'ativar':{const x=ficha(v);if(x.arquivada){x.arquivada=false;saveF(x)}setAtiva(x.alunoId,v);render();break}
