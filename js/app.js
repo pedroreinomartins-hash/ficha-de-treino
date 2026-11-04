@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-3';
+const APP_VERSAO='2026.11.04-4';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -454,7 +454,7 @@ function viewTreino(){
  const cond=a.cond?`<div class="note info">Você está conduzindo o treino de <b>${esc(a.alunoNome)}</b>. Os registros vão para o histórico do aluno.</div>`:'';
  return `<main class="wrap" style="padding-bottom:${a.restEnd?'380px':'40px'}">
  <header class="shead">${letter(a.letra)}<div class="grow"><div class="clock" id="elapsed">${hms((Date.now()-a.inicio)/1000)}</div><div class="small muted" id="wakeTag">${wake?'Tela ativa':'Tela pode apagar'}</div></div><button class="btn sm ghost" data-act="tab" data-v="inicio">Menu</button><button class="btn sm danger" data-act="endask">Encerrar</button></header>
- ${cond}<div class="strip">${strip}</div>${exLista()}${confirm}
+ ${confirm}${cond}<div class="strip">${strip}</div>${exLista()}
  <section class="panel">
   <div class="row" style="align-items:flex-start"><div class="grow"><div class="eyebrow">Exercício ${a.idx+1} de ${L.length}${ex.reab?' · reabilitação':''}</div><h2 class="exname">${esc(ex.n)}</h2></div><button class="btn sm ghost" data-act="adjopen">✎ Ajustar</button></div>
   ${S.adj&&S.adj.ex===ex.id?adjForm(ex):''}
