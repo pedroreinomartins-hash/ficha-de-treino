@@ -5,7 +5,8 @@ const CORES={
  azul:{n:'Azul',claro:'#2347D6',escuro:'#5B86FF'},
  verde:{n:'Verde-água',claro:'#0D7F86',escuro:'#2CC9B4'},
  roxo:{n:'Roxo',claro:'#7C3AED',escuro:'#B18CFF'},
- vermelho:{n:'Vermelho',claro:'#C81E5A',escuro:'#FF5C7A'}};
+ vermelho:{n:'Vermelho',claro:'#C81E5A',escuro:'#FF5C7A'},
+ amarelo:{n:'Amarelo',claro:'#A16207',escuro:'#FFC72C'}};
 const TEMAS=[['claro','Claro'],['escuro','Escuro'],['auto','Automático']];
 const AP_PADRAO={aluno:{tema:'escuro',cor:'laranja'},personal:{tema:'claro',cor:'azul'}};
 /* Configuração antiga (um tema para tudo e cor só no escuro) vira o ponto de partida. */
