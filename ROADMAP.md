@@ -26,6 +26,7 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - Geração de ficha por IA dentro do app (plano Premium). Hoje a ficha é criada colando a resposta de uma IA externa.
 - Cobrança no app: por aluno, por Personal ou ambos.
 - Modalidades novas: Hyrox ou CrossFit.
+- Gerador de ficha por regras (sem IA), como opção em *Nova ficha → Começar com*: objetivo, dias por semana, tempo, nível, local e articulação a poupar. Em espera (05/11/2026), para não criar uma terceira forma de montar ficha ao lado de *Criar com IA* e dos modelos básicos.
 
 ## Concluído
 
@@ -33,3 +34,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **04/11/2026 · Fichas:** ficha vazia sem treinos; modelos do Personal privados por padrão, com a opção “Disponível para meus alunos” (regras do Firestore atualizadas).
 - **04/11/2026 · Aparência e lista do treino:** tema (claro, escuro, automático) e cor por modo (aluno e Personal), salvos na conta; botões ✓ (feito, com valores previstos) e ✕ (pular) na lista do treino.
 - **05/11/2026 · Comunidades (etapas 1 e 2):** criação por aluno ou Personal, entrada com aprovação do criador, mural de recados curtos, check-in opcional, aviso fixado, moderação e denúncias, ranking (semana, mês, constância, km) e desafios, com limites de bom senso nas regras.
+- **05/11/2026 · Biblioteca e progresso (comparativo MuscleWiki):** biblioteca de exercícios com mapa corporal, filtros e passo a passo em português; músculos trabalhados na semana; 1RM estimado e cargas sugeridas; medidas corporais (aluno e Personal). Sem custo adicional e sem mudança nas regras do Firestore.

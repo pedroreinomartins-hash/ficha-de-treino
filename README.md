@@ -104,6 +104,18 @@ Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Mo
 
 O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA" e o Personal do aluno recebe um aviso no painel. A geração automática dentro do app está prevista para o plano Premium.
 
+### Biblioteca, músculos, 1RM e medidas (nov/2026)
+
+Tudo calculado no próprio aparelho, sem custo adicional e sem mudar as regras do Firestore.
+
+- **Biblioteca de exercícios:** *+ Incluir exercício* abre a biblioteca (69 exercícios) com **mapa corporal** de frente e costas. Toque num músculo (ou escolha na lista) e filtre por equipamento (barra, halteres, máquina, polia, peso do corpo, cardio) ou pelo nome. Cada exercício tem fotos, músculo principal e secundários, nível e **passo a passo em português**. Ao escolher, abre o formulário de sempre, já com o nome. O nome livre continua valendo: *Usar o nome “…”*.
+- **Passo a passo em português** também no treino, para os exercícios reconhecidos (nomes antigos e variações, como “Puxada alta pela frente” ou “Hip thrust”, são reconhecidos automaticamente).
+- **Progresso → Músculos:** mapa de calor com as séries por músculo na semana (navegue pelas semanas anteriores), lista de séries por músculo e aviso de grupos grandes sem estímulo. Músculo secundário conta meia série; corrida e aquecimento não entram.
+- **1RM estimado:** em *Gráficos → Carga máxima por exercício*, linha tracejada do 1RM estimado (fórmula de Epley, séries de até 12 repetições), melhor série e cargas sugeridas para ~4, ~8 e ~12 repetições.
+- **Progresso → Medidas:** peso, % de gordura e circunferências, com variação desde o registro anterior, gráfico por medida e lista de registros. Ficam no perfil do aluno; o Personal vê e registra em *Aluno → Evolução → Medidas*.
+- **Personal:** *Aluno → Evolução* ganhou *Gráficos · Músculos · Medidas*.
+- O texto de consentimento do vínculo e a política de privacidade passaram a mencionar as medidas corporais (vale para novos aceites).
+
 ### Durante o treino (nov/2026)
 
 - **Carga visível e editável:** cada exercício tem carga de referência, editável direto na ficha (campo *Carga* na lista) e mostrada no treino. Ao salvar o treino, a maior carga usada vira a nova referência.

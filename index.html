@@ -380,6 +380,27 @@ h2.sec{font-size:21px;margin-top:8px}
 .dsl{display:flex;flex-direction:column;gap:4px;padding:8px 0}
 .dsl.eu b{color:var(--accent)}
 .panel.aviso{border-left:4px solid var(--accent)}
+/* biblioteca, mapa corporal, 1RM e medidas (nov/2026) */
+.corpo{width:100%;height:auto;display:block;max-height:230px}
+.corpo text{fill:var(--muted);font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:.08em;text-anchor:middle}
+.corpo .bm-c{cursor:pointer}
+.corpo .bm-c:hover{stroke:var(--ink);stroke-width:.8}
+.fchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.fchips::-webkit-scrollbar{display:none}
+.fchip{flex:none;min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.bt-img{padding:0;flex:none;border-radius:8px}
+.bt-txt{text-align:left;padding:0}
+.bt-ic{display:grid;place-items:center;background:var(--sunk);color:var(--muted)}
+.bt-ic svg{width:22px;height:22px}
+.bt-add{font-size:24px;font-weight:700;color:var(--accent);background:var(--accent-soft);width:44px;height:44px;border-radius:12px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.mbar{display:grid;grid-template-columns:118px 1fr 34px;align-items:center;gap:8px;font-size:14px}
+.mbar .tr{height:10px;border-radius:5px;background:var(--sunk);overflow:hidden;display:block}
+.mbar .tr span{display:block;height:100%;border-radius:5px}
+.mbar b{font-size:17px;text-align:right}
+.rmbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+details.panel summary{cursor:pointer}
 </style>
 </head>
 <body>
@@ -397,6 +418,7 @@ h2.sec{font-size:21px;margin-top:8px}
 <script src="js/rede.js"></script>
 <script src="js/ia.js"></script>
 <script src="js/recursos.js"></script>
+<script src="js/biblioteca.js"></script>
 <script src="js/aparencia.js"></script>
 <script src="js/comunidades.js"></script>
 <script src="js/andamento.js"></script>

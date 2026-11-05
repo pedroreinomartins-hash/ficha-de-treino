@@ -1,7 +1,7 @@
 /* Rede: vínculo aluno–Personal com aceite, termos/consentimento, perfil público do Personal,
    academias e busca. Carregado antes de app.js; só define funções e trata cliques próprios. */
 const TERMOS_V='2026-11';
-const CONSENT='Autorizo este Personal a acessar minhas fichas, treinos, cargas, frequência, recados e registros de dor e esforço, para acompanhar meu treinamento. Posso encerrar o acompanhamento a qualquer momento em Meu perfil.';
+const CONSENT='Autorizo este Personal a acessar minhas fichas, treinos, cargas, frequência, recados, registros de dor e esforço e medidas corporais, para acompanhar meu treinamento. Posso encerrar o acompanhamento a qualquer momento em Meu perfil.';
 const ESPEC=['Hipertrofia','Emagrecimento','Reabilitação e lesões','Iniciantes','Idosos','Gestantes','Força','Funcional','Mobilidade','Corrida','Condicionamento'];
 const UFS='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 const MODS={presencial:'Presencial',online:'Online',ambos:'Presencial e online'};

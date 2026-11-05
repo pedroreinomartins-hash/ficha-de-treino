@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.05-1';
+const APP_VERSAO='2026.11.05-2';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -400,9 +400,10 @@ function viewTreinos(){const aid=S.me,f=ativaDe(aid),ws=weekStart(Date.now()),ss
  body+=`<h2 class="sec">${f?'Todas as minhas fichas':'Minhas fichas'}</h2>${fichasList(aid)}`;
  return pageHero('Meus treinos',f?`Ficha atual: ${esc(f.nome)} · semana ${programWeek(f)} de ${f.semanas||8}`:'Escolha ou crie uma ficha',body)}
 /* Aba Progresso do aluno: gráficos e histórico juntos. */
-function viewProgresso(){const sub=S.psub==='historico'?'historico':'graficos';
- const st=`<div class="subtabs">${[['graficos','Gráficos'],['historico','Histórico']].map(([k,l])=>`<button data-act="psub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
- return pageHero('Meu progresso',`${sessDe(S.me).length} treinos registrados`,`${st}${sub==='historico'?historico(S.me):evolucao(S.me)}`)}
+function viewProgresso(){const sub=['historico','musculos','medidas'].includes(S.psub)?S.psub:'graficos';
+ const st=`<div class="subtabs">${[['graficos','Gráficos'],['musculos','Músculos'],['medidas','Medidas'],['historico','Histórico']].map(([k,l])=>`<button data-act="psub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
+ const body=sub==='historico'?historico(S.me):sub==='musculos'?musculos(S.me):sub==='medidas'?medidas(S.me):evolucao(S.me);
+ return pageHero('Meu progresso',`${sessDe(S.me).length} treinos registrados`,`${st}${body}`)}
 function itemRow(s){if(s.corrida)return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted">${esc(s.treinoNome||'Corrida')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${fmtDist(s.corrida.dist)}</b><div class="small muted">${fmtRitmo(s.corrida.ritmo)}</div></div></div>`;const n=Object.values(s.ex||{}).reduce((a,r)=>a+r.sets.length,0);return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.treinoNome||'')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${Math.round(s.dur/60)} min</b><div class="small muted">${n} séries</div></div></div>`}
 
 /* ================= Lista de fichas (aluno, aluno visto pelo Personal, modelos) ================= */
@@ -470,7 +471,7 @@ function exForm(){const d=S.form.d;return `<div class="form" id="exform">
  <label class="check"><input type="checkbox" data-f="reab" ${d.reab?'checked':''}>Exercício de reabilitação</label>
  <div class="field"><label class="lbl" for="fx-nota">Observação</label><input id="fx-nota" class="txt" data-f="nota" value="${esc(d.nota)}" placeholder="Ex.: amplitude de 0° a 60°"></div>
  <div class="field"><label class="lbl" for="fx-video">Link do vídeo (YouTube, opcional)</label><input id="fx-video" class="txt" data-f="video" inputmode="url" value="${esc(d.video||'')}" placeholder="https://youtu.be/…"></div>
- ${(()=>{const m=media(d.n);return m?`<div class="small muted">Fotos de referência encontradas para este nome.</div>`:d.n?`<div class="small muted">Sem fotos de referência para este nome. Use um nome da lista para ver as fotos.</div>`:''})()}
+ ${(()=>{const m=media(d.n),bx=classifica(d.n);return (bx&&bx.p?`<div class="small muted">Músculos: <b style="color:var(--ink)">${esc(muscTxt(bx))}</b></div>`:'')+(m?`<div class="small muted">Fotos de referência encontradas para este nome.</div>`:d.n?`<div class="small muted">Sem fotos de referência para este nome. Use um nome da lista para ver as fotos.</div>`:'')})()}
  ${S.form.err?`<div class="note bad">${esc(S.form.err)}</div>`:''}
  <div class="nav2"><button class="btn ghost" data-act="fcancel">Cancelar</button><button class="btn primary" data-act="fsave">Salvar exercício</button></div></div>`}
 
@@ -538,10 +539,11 @@ function subBlock(ex){const a=S.active,tc=TECNICAS[ex.tec],r=rec(ex),ls=r.sets[r
  <div class="steppers">${stepper('dkg','Carga (kg)',fmtKg(a.subd.kg),2.5)}${stepper('dreps','Repetições',a.subd.reps,1)}</div>
  <button class="btn primary" data-act="sublog">Registrar ${drop?'drop':'bloco'}</button>
  <button class="btn ghost" data-act="subend">Encerrar série${a.exList.every(isDone)?'':' e descansar'}</button></div>`}
-function demo(ex){const m=media(ex.n),yt=ytEmbed(ex.video);if(!m&&!ex.video)return '';
+function demo(ex){const m=media(ex.n),yt=ytEmbed(ex.video),bx=classifica(ex.n);if(!m&&!ex.video&&!bx)return '';
+ const passos=bx?`<details><summary>Como executar · passo a passo</summary><ol class="small muted">${bx.ps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>${bx.p?`<div class="small muted">Músculos: ${esc(muscTxt(bx))}</div>`:''}</details>`:'';
  const vid=ex.video?(S.vid===ex.id&&yt?`<div class="vid"><iframe src="${yt}?rel=0" title="Vídeo: ${esc(ex.n)}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`:yt?`<button class="btn ghost" data-act="vid" data-v="${ex.id}">▶ Ver vídeo</button>`:`<a class="btn ghost" href="${esc(ex.video)}" target="_blank" rel="noopener">▶ Abrir vídeo</a>`):'';
  const big=S.imgBig===ex.id;
- const pics=m?`<div class="demo"><button class="imgs ${big?'big':''}" data-act="imgbig" data-v="${ex.id}" aria-label="${big?'Reduzir fotos':'Ampliar fotos'}">${m.img.map((p,i)=>`<img src="${IMG_BASE+p}" alt="${esc(ex.n)}, posição ${i?'final':'inicial'}" loading="lazy">`).join('')}</button><details><summary>Como executar · passo a passo</summary><ol class="small muted">${m.ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ol><div class="small muted">Instruções em inglês · Free Exercise DB</div></details></div>`:'';
+ const pics=m?`<div class="demo"><button class="imgs ${big?'big':''}" data-act="imgbig" data-v="${ex.id}" aria-label="${big?'Reduzir fotos':'Ampliar fotos'}">${m.img.map((p,i)=>`<img src="${IMG_BASE+p}" alt="${esc(ex.n)}, posição ${i?'final':'inicial'}" loading="lazy">`).join('')}</button>${passos||`<details><summary>Como executar · passo a passo</summary><ol class="small muted">${m.ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ol><div class="small muted">Instruções em inglês · Free Exercise DB</div></details>`}</div>`:passos?`<div class="demo">${passos}</div>`:'';
  return pics+vid}
 function stepper(k,label,v,step){return `<div class="stepper"><label class="lbl" for="in-${k}">${label}</label><div class="ctl"><button data-act="step" data-k="${k}" data-d="${-step}" aria-label="Diminuir">−</button><input id="in-${k}" data-k="${k}" inputmode="decimal" value="${v}"><button data-act="step" data-k="${k}" data-d="${step}" aria-label="Aumentar">+</button></div></div>`}
 function painBlock(v){
@@ -564,9 +566,9 @@ function bars(items,{target}={}){
  const tl=target?`<line class="target" x1="${L}" x2="${W-R}" y1="${y(target)}" y2="${y(target)}"/><text x="${W-R}" y="${y(target)-4}" text-anchor="end" style="fill:var(--ink)">meta ${target}</text>`:'';
  const b=items.map((it,i)=>{const x=L+i*bw+bw*.18,w=bw*.64,h=Math.max(it.v?2:0,(it.v/mx)*ih);return `<rect x="${x}" y="${T+ih-h}" width="${w}" height="${h}" rx="3" fill="${it.c||'var(--accent)'}"/>${it.v?`<text x="${x+w/2}" y="${T+ih-h-4}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${it.v}</text>`:''}<text x="${x+w/2}" y="${H-8}" text-anchor="middle">${it.l}</text>`}).join('');
  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${ticks}${tl}${b}</svg></div>`}
-function line(pts,{unit='',min=null,max=null,bands=false,fmt=null}={}){const F=fmt||(v=>+(+v).toFixed(1));
+function line(pts,{unit='',min=null,max=null,bands=false,fmt=null,extra=null,extraCor='var(--t1)'}={}){const F=fmt||(v=>+(+v).toFixed(1));
  const W=340,H=180,L=34,R=12,T=14,B=24,iw=W-L-R,ih=H-T-B;
- const vs=pts.map(p=>p.v);let lo=min??Math.min(...vs),hi=max??Math.max(...vs);
+ const vs=pts.map(p=>p.v).concat((extra||[]).filter(v=>v>0));let lo=min??Math.min(...vs),hi=max??Math.max(...vs);
  if(min==null){const span=Math.max(hi-lo,hi*.1,1);lo=Math.max(0,Math.floor(lo-span*.25));hi=Math.ceil(hi+span*.25)}
  const x=i=>L+(pts.length===1?iw/2:i*iw/(pts.length-1));const y=v=>T+ih-((v-lo)/(hi-lo||1))*ih;
  const ticks=[lo,(lo+hi)/2,hi].map(t=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-6}" y="${y(t)+3}" text-anchor="end">${F(t)}</text>`).join('');
@@ -577,7 +579,8 @@ function line(pts,{unit='',min=null,max=null,bands=false,fmt=null}={}){const F=f
  const lab=pts.map((p,i)=>(i%step===0||i===pts.length-1)?`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${p.l}</text>`:'').join('');
  const dots=pts.map((p,i)=>{const last=i===pts.length-1;return `<circle cx="${x(i)}" cy="${y(p.v)}" r="${last?5:3}" fill="${last?'var(--accent)':'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>`}).join('');
  const lp=pts[pts.length-1];
- return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${bd}${ticks}${area}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}<text x="${Math.min(x(pts.length-1),W-R-4)}" y="${y(lp.v)-10}" text-anchor="end" style="fill:var(--ink);font-weight:600;font-size:12px">${fmt?F(lp.v):fmtKg(lp.v)}${unit}</text>${lab}</svg></div>`}
+ const ex2=extra&&extra.some(v=>v>0)?(()=>{const q=extra.map((v,i)=>v>0?[x(i),y(v)]:null).filter(Boolean);return `<path d="${q.map((c,i)=>`${i?'L':'M'}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join('')}" fill="none" stroke="${extraCor}" stroke-width="2.5" stroke-dasharray="6 4" stroke-linejoin="round"/>${q.map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="2.5" fill="${extraCor}"/>`).join('')}`})():'';
+ return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${bd}${ticks}${area}${ex2}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}<text x="${Math.min(x(pts.length-1),W-R-4)}" y="${y(lp.v)-10}" text-anchor="end" style="fill:var(--ink);font-weight:600;font-size:12px">${fmt?F(lp.v):fmtKg(lp.v)}${unit}</text>${lab}</svg></div>`}
 
 /* ================= Evolução e histórico (por aluno) ================= */
 function evolucao(aid){
@@ -596,11 +599,12 @@ function evolucao(aid){
  const keys=Object.keys(names).sort((a,b)=>names[a].localeCompare(names[b],'pt'));
  const ce=keys.includes(S.chartEx)?S.chartEx:keys[0];
  let carga='<div class="empty">Registre cargas em kg para acompanhar a evolução por exercício.</div>';
- if(ce){const pts=ss.filter(s=>Object.values(s.ex).some(r=>nk(r.n)===ce&&r.sets.some(x=>x.kg>0))).reverse().map(s=>{const st=Object.values(s.ex).find(r=>nk(r.n)===ce).sets;return {l:ddmm(s.inicio),v:Math.max(...st.map(x=>+x.kg||0)),vol:st.reduce((a,x)=>a+(+x.kg||0)*(+x.reps||0),0)}});
+ if(ce){const pts=ss.filter(s=>Object.values(s.ex).some(r=>nk(r.n)===ce&&r.sets.some(x=>x.kg>0))).reverse().map(s=>{const st=Object.values(s.ex).find(r=>nk(r.n)===ce).sets;const b1=melhor1rm(st);return {l:ddmm(s.inicio),v:Math.max(...st.map(x=>+x.kg||0)),vol:st.reduce((a,x)=>a+(+x.kg||0)*(+x.reps||0),0),rm:b1?b1.v:0,b1:b1?{...b1,t:s.inicio}:null}});
+  const rms=pts.map(p=>p.rm),best1=pts.reduce((m,p)=>p.b1&&(!m||p.b1.v>m.v)?p.b1:m,null);
   const first=pts[0].v,lastv=pts[pts.length-1].v,best=Math.max(...pts.map(p=>p.v)),diff=lastv-first;
-  carga=`<select id="exSel" aria-label="Exercício">${keys.map(k=>`<option value="${esc(k)}" ${k===ce?'selected':''}>${esc(names[k])}</option>`).join('')}</select>${line(pts,{unit:' kg'})}
+  carga=`<select id="exSel" aria-label="Exercício">${keys.map(k=>`<option value="${esc(k)}" ${k===ce?'selected':''}>${esc(names[k])}</option>`).join('')}</select>${line(pts,{unit:' kg',extra:best1?rms:null})}${best1?`<div class="legend"><span><i style="background:var(--accent)"></i>Carga máxima</span><span><i style="background:var(--t1)"></i>1RM estimado (tracejado)</span></div>`:''}
   <div class="kpis"><div class="kpi"><b>${fmtKg(lastv)}</b><span>kg na última</span></div><div class="kpi"><b>${fmtKg(best)}</b><span>kg recorde</span></div><div class="kpi"><b style="color:${diff>0?'var(--good)':diff<0?'var(--bad)':'var(--ink)'}">${diff>0?'+':''}${fmtKg(diff)}</b><span>kg desde o início</span></div></div>
-  <div class="small muted">Volume na última sessão: <b class="num" style="color:var(--ink)">${Math.round(pts[pts.length-1].vol).toLocaleString('pt-BR')} kg</b> (carga × repetições)</div>`}
+  <div class="small muted">Volume na última sessão: <b class="num" style="color:var(--ink)">${Math.round(pts[pts.length-1].vol).toLocaleString('pt-BR')} kg</b> (carga × repetições)</div>${bloco1rm(best1)}`}
  const painPts=ss.filter(s=>Object.values(s.ex||{}).some(r=>r.dor!=null)).slice(0,12).reverse().map(s=>({l:ddmm(s.inicio),v:Math.max(...Object.values(s.ex).filter(r=>r.dor!=null).map(r=>r.dor))}));
  const dor=painPts.length?`${line(painPts,{min:0,max:10,bands:true})}<div class="legend"><span><i style="background:var(--good-soft)"></i>0–2 aceitável</span><span><i style="background:var(--warn-soft)"></i>3–4 monitorar</span><span><i style="background:var(--bad-soft)"></i>5+ interromper</span></div>`:'<div class="empty">Marque a dor de 0 a 10 nos exercícios de joelho para ver a tendência aqui.</div>';
  const psePts=ss.filter(s=>s.feedback?.pse).slice(0,12).reverse().map(s=>({l:ddmm(s.inicio),v:s.feedback.pse}));
@@ -647,7 +651,7 @@ function viewAluno(){
  const st=`<div class="subtabs">${[['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico'],['cadastro','Cadastro']].map(([k,l])=>`<button data-act="sub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
  let body='';
  if(sub==='fichas')body=fichasList(p.id);
- else if(sub==='evolucao')body=evolucao(p.id);
+ else if(sub==='evolucao'){const es=['musculos','medidas'].includes(S.esub)?S.esub:'graficos';body=`<div class="seg">${[['graficos','Gráficos'],['musculos','Músculos'],['medidas','Medidas']].map(([k,l])=>`<button data-act="esub" data-v="${k}" class="${es===k?'on':''}">${l}</button>`).join('')}</div>${es==='musculos'?musculos(p.id):es==='medidas'?medidas(p.id):evolucao(p.id)}`}
  else if(sub==='historico')body=historico(p.id);
  else{const C=S.conf;body=`<section class="panel">
   <div class="field"><label class="lbl" for="cad-nome">Nome</label><input id="cad-nome" class="txt" data-ch="pnome" value="${esc(p.nome)}"></div>
@@ -677,6 +681,7 @@ function render0(){
  if(v==='busca')return viewBusca();
  if(v==='ia')return viewIA();
  if(v==='aluno'&&isPT())return viewAluno();
+ if(v==='ficha'&&S.bib)return viewBiblio();
  if(v==='ficha')return viewFicha();
  if(PM()){if(v==='modelos')return page('Biblioteca do Personal','Modelos',fichasList('modelos'));if(S.g&&v==='gestao')return viewGestao();S.view='alunos';return viewAlunos()}
  if(S.g&&v==='gestao')return viewGestao();
@@ -701,11 +706,11 @@ function render(){
  document.querySelectorAll('#app input[data-k]').forEach(inp=>inp.onchange=()=>{const [o,k]=alvo(inp.dataset.k);if(!o)return;if(k==='sec'||k==='hold'){o[k]=Math.max(5,parseMS(inp.value)||30);saveActive();return}const v=parseFloat(inp.value.replace(',','.'));o[k]=isNaN(v)?0:Math.max(0,v);if(k==='s')o.s=Math.min(10,Math.max(1,Math.round(o.s)));saveActive()});
  const dl=$('#exlib');if(dl&&(S.view==='ficha'||S.view==='ia')){const set=new Set(LIB);S.fichas.forEach(f=>f.treinos.forEach(t=>t.ex.forEach(e=>set.add(e.n))));dl.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'pt')).map(n=>`<option value="${esc(n)}">`).join('')}
 }
-const go=v=>{S.view=v;S.pf=null;S.gmsg=null;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
+const go=v=>{S.view=v;S.bib=null;S.med=null;S.medDel=null;S.pf=null;S.gmsg=null;S.conf=null;S.form=null;S.confirmDel=null;S.newF=null;S.newU=null;S.imp=null;S.cadMsg='';render();window.scrollTo(0,0)};
 function findEx(f,tid,eid){const t=f.treinos.find(x=>x.id===tid);return {t,i:t?t.ex.findIndex(e=>e.id===eid):-1}}
 function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,arquivada:false,basico:false,criada:Date.now(),modelo:owner==='modelos',global:owner==='modelos'&&S.g,alunoId:owner==='modelos'?null:owner,autor:ME().nome,tpl:null};delete nf._p;delete nf._seed;delete nf.personalId;delete nf.basico;delete nf.desc;delete nf.alunos;
  nf.treinos=nf.treinos.map(t=>({...t,id:uid('t'),ex:t.ex.map(x=>({...x,id:uid('e')}))}));return nf}
-function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='gestao'?'gestao':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;render();window.scrollTo(0,0)}
+function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='gestao'?'gestao':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;S.bib=null;render();window.scrollTo(0,0)}
 function curFicha(){return ficha(S.edit)}
 function saveF(f){put('fichas',f)}
 
@@ -760,8 +765,8 @@ document.addEventListener('click',e=>{
   /* navegação */
   case 'tab':if(v==='comunidade'){S.com=null;S.cf=null}go(v);if(v==='treino')keepAwake();break;
   case 'aluno':S.sel=v;S.sub='fichas';S.evoF='ativa';go('aluno');break;
-  case 'psub':S.psub=v;S.confirmDel=null;S.evoF='ativa';if(S.view!=='progresso'){go('progresso')}else render();break;
-  case 'sub':S.sub=v;S.imp=null;S.cadMsg='';S.conf=null;S.newF=null;S.confirmDel=null;S.evoF='ativa';render();break;
+  case 'psub':S.psub=v;S.confirmDel=null;S.med=null;S.medDel=null;S.evoF='ativa';if(S.view!=='progresso'){go('progresso')}else render();break;
+  case 'sub':S.sub=v;S.med=null;S.medDel=null;S.imp=null;S.cadMsg='';S.conf=null;S.newF=null;S.confirmDel=null;S.evoF='ativa';render();break;
   case 'start':startSession(b.dataset.f,v);window.scrollTo(0,0);break;
   /* feedback */
   case 'fbv':S.fbv=+v;{const t=$('#fb-txt');S.fbtxt=t?t.value:''}render();{const t=$('#fb-txt');if(t)t.value=S.fbtxt||''}break;
@@ -782,7 +787,7 @@ document.addEventListener('click',e=>{
   case 'conf':S.conf=v||null;render();break;
   case 'addt':{if(f.treinos.length>=7)break;f.treinos.push({id:uid('t'),nome:'Treino '+LETRAS[f.treinos.length],dia:'',ex:[]});saveF(f);render();break}
   case 'delt':{f.treinos=f.treinos.filter(t=>t.id!==v);S.conf=null;saveF(f);render();break}
-  case 'adde':S.conf=null;S.form={t:b.dataset.t,e:null,d:{n:'',tipo:'c',s:'3',r:'8-12',desc:fmtMS(REST.c),hold:'0:30',knee:false,reab:false,nota:'',video:'',kg:'',tec:''}};render();setTimeout(()=>{$('#exform')?.scrollIntoView({block:'center'});$('#fx-n')?.focus()},0);break;
+  case 'adde':S.conf=null;S.form=null;S.bib={t:b.dataset.t,mus:'',eq:'Todos',q:'',det:null};render();window.scrollTo(0,0);break;
   case 'edite':{const {t,i}=findEx(f,b.dataset.t,v);const x=t.ex[i];S.conf=null;S.form={t:t.id,e:x.id,d:{n:x.n,tipo:x.tipo,s:String(x.s),r:x.r,desc:fmtMS(x.desc??REST[x.tipo]),hold:fmtMS(x.hold??30),knee:!!x.knee,reab:!!x.reab,nota:x.nota||'',video:x.video||'',kg:+x.kg>0?fmtKg(x.kg):'',tec:x.tec||''}};render();$('#exform')?.scrollIntoView({block:'center'});break}
   case 'ftipo':{const d=S.form.d;if(v==='t'&&!/s|min/.test(d.r))d.r='30-45 s';else if(v!=='t'&&/s|min/.test(d.r))d.r='8-12';d.tipo=v;render();break}
   case 'fcancel':S.form=null;render();break;
