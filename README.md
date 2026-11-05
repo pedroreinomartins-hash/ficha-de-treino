@@ -4,9 +4,9 @@ Aplicativo web para controle de treinos de academia, com acesso para alunos e pa
 
 **Gestor:** aba Gestão com todos os Personais e alunos, liberação de Personais, transferência de alunos e modelos para todos.
 
-**Aluno:** treino do dia com cronômetro de sessão, descanso automático com vibração e som, isometrias cronometradas, registro de carga e repetições, escala de dor no joelho, avaliação do esforço ao final, fotos de execução e vídeo de cada exercício, frequência semanal, gráficos de evolução e histórico. O aluno pode criar e editar as próprias fichas.
+**Aluno:** treino do dia com cronômetro de sessão, descanso automático com vibração e som, isometrias cronometradas, registro de carga e repetições, escala de dor (nos exercícios marcados na ficha), avaliação do esforço ao final, fotos de execução e vídeo de cada exercício, frequência semanal, gráficos de evolução e histórico. O aluno pode criar e editar as próprias fichas.
 
-**Personal:** painel com os alunos da sua carteira (frequência da semana em relação à meta, último treino e alertas de dor, piora do joelho, esforço alto, ausência e recados), fichas de cada aluno, modelos reutilizáveis, evolução, histórico e cadastro de alunos.
+**Personal:** painel com os alunos da sua carteira (frequência da semana em relação à meta, último treino e alertas de dor, piora nas 24 h, esforço alto, ausência e recados, com botão *Ciente*), fichas de cada aluno, modelos reutilizáveis, evolução, histórico e cadastro de alunos.
 
 Tecnologia: HTML e JavaScript puros, publicados no **GitHub Pages**, com login e banco de dados no **Firebase** (Authentication + Cloud Firestore). As fotos dos exercícios vêm da [Free Exercise DB](https://github.com/yuhonas/free-exercise-db), de domínio público.
 
@@ -85,7 +85,7 @@ O gestor vê todos os Personais e alunos, libera novos Personais e transfere alu
 
 - **Treino de corrida na ficha** (*+ Treino de corrida* no editor), montado em blocos: aquecimento, corrida contínua, intervalado (tiros com recuperação) e desaquecimento, por tempo ou distância, com ritmo opcional.
 - **Execução guiada por voz**: anúncio de cada etapa, aviso de 10 segundos, contagem dos 3 últimos segundos e avanço automático. Sem GPS, blocos por distância usam o ritmo para estimar o tempo; sem ritmo, o avanço é manual (botão ou fone).
-- **Registro da corrida**: distância, tempo, ritmo calculado, FC média, esforço, dor no joelho, tênis e observação. Também há *Registrar corrida avulsa* no Início.
+- **Registro da corrida**: distância, tempo, ritmo calculado, FC média, esforço, dor, tênis e observação. Também há *Registrar corrida avulsa* no Início.
 - **Arquivo do relógio**: GPX, TCX ou FIT exportado do Garmin, Polar, Coros, Suunto, Amazfit/Zepp, Strava etc. preenche distância, tempo, data e FC.
 - **Evolução**: km por semana, ritmo por corrida, maior distância e alerta quando o volume semanal sobe mais de 10%. **Tênis**: km acumulados e aviso a partir de 600 km.
 
@@ -103,6 +103,12 @@ Em **Fichas → ✦ Criar com IA** (também disponível para o Personal e nos Mo
 3. **Prévia editável:** confere, corrige, inclui ou remove exercícios e cria a ficha.
 
 O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA" e o Personal do aluno recebe um aviso no painel. A geração automática dentro do app está prevista para o plano Premium.
+
+### Alertas e escala de dor (nov/2026)
+
+- **Ciente:** em *Aluno*, cada alerta tem o botão *Ciente* (e *Ciente de todos*). O alerta some e só volta com um fato novo; o de ausência volta 7 dias depois se o aluno seguir sem treinar. A marcação fica no perfil do aluno e vale em qualquer aparelho.
+- **Motivos dos alertas:** dor 5 ou mais num exercício com escala ou na corrida (14 dias), dor pior nas 24 h (14 dias), esforço 9 ou 10 (14 dias), sem treinar há 5 dias ou mais, sem treinos registrados, ficha vencida ou vencendo, volume de corrida acima de 10%, recado do aluno e exercícios pulados (7 dias), ficha criada com IA (14 dias) e aniversário.
+- **Escala de dor em qualquer exercício:** na montagem, marque *Avaliar dor neste exercício*; a escala de 0 a 10 aparece só nesses exercícios. A pergunta “Como você ficou depois do treino?” (24 h) só aparece quando o treino teve exercício com escala. Os alertas indicam o exercício.
 
 ### Biblioteca, músculos, 1RM e medidas (nov/2026)
 

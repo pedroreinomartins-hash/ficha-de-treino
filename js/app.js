@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.05-2';
+const APP_VERSAO='2026.11.05-3';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -206,17 +206,25 @@ function lastFor(name,aid){const k=nk(name);for(const s of S.sessions){if(s.alun
 function nextIdx0(f){const ss=S.sessions.filter(s=>s.fichaId===f.id);if(!ss.length||!f.treinos.length)return 0;const i=f.treinos.findIndex(t=>t.id===ss[0].treinoId);return i<0?0:(i+1)%f.treinos.length}
 function weekCount(ws,aid,fid){return S.sessions.filter(s=>s.alunoId===aid&&weekStart(s.inicio)===ws&&(!fid||s.fichaId===fid)).length}
 function programWeek(f){const ss=S.sessions.filter(s=>s.fichaId===f.id);if(!ss.length)return 1;return Math.floor((weekStart(Date.now())-weekStart(Math.min(...ss.map(s=>s.inicio))))/(7*DAY))+1}
-function alertas(aid){const out=[],now=Date.now(),ss=sessDe(aid);
- fichasDe(aid).filter(f=>f.origem==='ia'&&f.autorId===aid&&now-(f.criada||0)<14*DAY).forEach(f=>out.push({c:'info',t:`Criou a ficha “${f.nome}” com sugestão de IA em ${ddmm(f.criada)}. Vale revisar.`}));
- if(!ss.length){out.push({c:'warn',t:'Ainda não registrou treinos'});out.push(...alertasExtras(aid));return out}
- const dias=Math.floor((now-ss[0].fim)/DAY);if(dias>=5)out.push({c:'warn',t:`Sem treinar há ${dias} dias`});
- ss.filter(s=>now-s.inicio<14*DAY).forEach(s=>{const mx=Math.max(-1,...Object.values(s.ex).filter(r=>r.dor!=null).map(r=>r.dor));if(mx>=5)out.push({c:'bad',t:`Dor ${mx}/10 no joelho em ${ddmm(s.inicio)}`});
-  if(s.dor24==='pior')out.push({c:'bad',t:`Joelho piorou após o treino de ${ddmm(s.inicio)}`});
-  if(s.feedback?.pse>=9)out.push({c:'warn',t:`Esforço ${s.feedback.pse}/10 em ${ddmm(s.inicio)}`});
-  if(s.feedback?.txt&&now-s.inicio<7*DAY)out.push({c:'info',t:`“${s.feedback.txt}” (${ddmm(s.inicio)})`})});
+/* Alertas do painel do Personal. Cada um tem uma chave (k): o Personal marca "Ciente" e ele some,
+   voltando só com um fato novo. Ausência volta 7 dias depois do "Ciente" se o aluno seguir sem treinar. */
+function alertasTodos(aid){const out=[],now=Date.now(),ss=sessDe(aid);
+ fichasDe(aid).filter(f=>f.origem==='ia'&&f.autorId===aid&&now-(f.criada||0)<14*DAY).forEach(f=>out.push({k:'ia:'+f.id,c:'info',t:`Criou a ficha “${f.nome}” com sugestão de IA em ${ddmm(f.criada)}. Vale revisar.`}));
+ if(!ss.length){out.push({k:'semreg',c:'warn',t:'Ainda não registrou treinos'});out.push(...alertasExtras(aid));return out}
+ const dias=Math.floor((now-ss[0].fim)/DAY);if(dias>=5)out.push({k:'aus:'+ss[0].id,c:'warn',t:`Sem treinar há ${dias} dias`,volta:7*DAY});
+ ss.filter(s=>!s.corrida&&now-s.inicio<14*DAY).forEach(s=>{const rs=Object.values(s.ex||{}).filter(r=>r.dor!=null);const pior=rs.sort((a,b)=>b.dor-a.dor)[0];
+  if(pior&&pior.dor>=5)out.push({k:'dor:'+s.id,c:'bad',t:`Dor ${pior.dor}/10 em ${pior.n} (${ddmm(s.inicio)})`});
+  if(s.dor24==='pior')out.push({k:'d24:'+s.id,c:'bad',t:`Dor piorou nas 24 h após o treino de ${ddmm(s.inicio)}`});
+  if(s.feedback?.pse>=9)out.push({k:'pse:'+s.id,c:'warn',t:`Esforço ${s.feedback.pse}/10 em ${ddmm(s.inicio)}`});
+  if(s.feedback?.txt&&now-s.inicio<7*DAY)out.push({k:'rec:'+s.id,c:'info',t:`“${s.feedback.txt}” (${ddmm(s.inicio)})`})});
  out.push(...corridaAlertas(aid));
  out.push(...alertasExtras(aid));
  return out}
+function alertaVisto(p,a){const t=p?.vistos?.[a.k];return !!t&&(!a.volta||Date.now()-t<a.volta)}
+function alertas(aid){const p=perfil(aid);return alertasTodos(aid).filter(a=>!a.k||!alertaVisto(p,a))}
+function marcarCiente(aid,ks){const p=perfil(aid);if(!p||!ks.length)return;const now=Date.now(),v={};
+ Object.entries(p.vistos||{}).forEach(([k,t])=>{if(now-t<120*DAY)v[k]=t});ks.forEach(k=>v[k]=now);p.vistos=v;render();
+ if(fdb)fdb.collection('perfis').doc(aid).update({vistos:v}).catch(e=>{console.warn(e);toast('Não foi possível salvar. Verifique a conexão.')})}
 
 /* ================= Som, vibração, tela ativa ================= */
 function unlockAudio(){somAudio()}
@@ -235,7 +243,10 @@ function releaseAwake(){try{wake&&wake.release()}catch(e){}wake=null}
 /* ================= Sessão de treino ================= */
 const myActive=()=>S.active&&(S.active.alunoId===S.me||S.active.cond===S.me)?S.active:null;
 const curEx=()=>S.active.exList[S.active.idx];
-function rec(ex){const a=S.active;return a.ex[ex.id]||(a.ex[ex.id]={n:ex.n,sets:[],dor:null})}
+function rec(ex){const a=S.active;return a.ex[ex.id]||(a.ex[ex.id]={n:ex.n,sets:[],dor:null,...(ex.knee?{ad:1}:{})})}
+/* O treino teve exercício com escala de dor? (para a pergunta das 24 h) */
+function temEscalaDor(s){if(s.corrida)return s.corrida.dor!=null;const rs=Object.values(s.ex||{});if(rs.some(r=>r.ad||r.dor!=null))return true;
+ const t=ficha(s.fichaId)?.treinos?.find(x=>x.id===s.treinoId);return !!t&&t.ex.some(e=>e.knee&&s.ex?.[e.id])}
 function draft(ex){const a=S.active;if(!a.draft[ex.id]){const l=lastFor(ex.n,a.alunoId);const ls=l?.r.sets[l.r.sets.length-1];a.draft[ex.id]=ex.tipo==='t'?{sec:ls?.sec??ex.hold??30}:{kg:(+ex.kg>0?+ex.kg:ls?.kg)??0,reps:ls?.reps??firstNum(ex.r)}}return a.draft[ex.id]}
 function startSession(fid,tid,aid){unlockAudio();const f=ficha(fid),ti=f.treinos.findIndex(t=>t.id===tid),t=f.treinos[ti];if(!t||!temConteudo(t))return;const cond=aid&&aid!==S.me;{const d=andDe(cond?aid:S.me);if(d&&d.controle!==S.me&&t.tipo!=='corrida')return toast(cond?'Este aluno já está com um treino em andamento. Use “Assumir e continuar”.':'Seu treino está em andamento em outro celular. Use “Retomar no meu celular”.')}if(t.tipo==='corrida'){if(cond)return toast('A condução pelo Personal vale para treinos de musculação.');return startCorrida(f,t,ti)}const now=Date.now();
  S.active={id:uid('s'),alunoId:cond?aid:S.me,fichaId:f.id,treinoId:t.id,letra:LETRAS[ti],treinoNome:t.nome,exList:clone(t.ex),inicio:now,idx:0,ex:{},draft:{},skip:{},restEnd:null,holdEnd:null};
@@ -337,7 +348,7 @@ async function submitAuth(){const A=S.auth;A.email=($('#au-email')?.value||'').t
 function fbPanel(){const s=S.sessions.find(x=>x.id===S.fb);if(!s)return '';const pc=!!s.conduzidoPor;
  return `<section class="form"><div class="eyebrow">Treino ${esc(s.letra)} salvo · ${Math.round(s.dur/60)} min${pc?' · conduzido por você':''}</div>${pc?'':metaMsgHTML()}<h2>${pc?'Como o aluno avaliou o treino?':'Como foi o treino?'}</h2>${pc?'':checkinBox(s)}
  <div class="field"><span class="lbl">Esforço percebido (1 = muito leve · 10 = máximo)</span><div class="pse">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-act="fbv" data-v="${n}" class="${S.fbv===n?'sel':''}">${n}</button>`).join('')}</div></div>
- <div class="field"><label class="lbl" for="fb-txt">${pc?'Observação sobre o treino (opcional)':'Recado para o Personal (opcional)'}</label><textarea id="fb-txt" class="txt" placeholder="Ex.: senti o joelho no leg press na última série"></textarea></div>
+ <div class="field"><label class="lbl" for="fb-txt">${pc?'Observação sobre o treino (opcional)':'Recado para o Personal (opcional)'}</label><textarea id="fb-txt" class="txt" placeholder="Ex.: senti incômodo no leg press na última série"></textarea></div>
  <div class="nav2"><button class="btn ghost" data-act="fbskip">Pular</button><button class="btn primary" data-act="fbsave">Enviar</button></div></section>`}
 function diaFeito(t){const i=(new Date(t).getDay()+6)%7;return (i>=5?'no ':'na ')+DIAS[i].toLowerCase()}
 function saudacao(){const h=new Date().getHours();return h>=5&&h<12?'Bom dia':h>=12&&h<18?'Boa tarde':'Boa noite'}
@@ -361,8 +372,8 @@ function viewInicio(){
  if(!ME())return page('Conta','Ficha de Treino',`<div class="empty">Seu cadastro não foi encontrado ou foi desativado. Fale com o Personal.</div>`);
  const aid=S.me,f=ativaDe(aid),now=Date.now(),ws=weekStart(now),ss=sessDe(aid);
  const last=ss[0];let check='';
- if(!S.fb&&last&&last.dor24==null&&!myActive()&&now-last.fim>16*3600e3&&now-last.fim<6*DAY)
-  check=`<section class="panel"><div class="eyebrow">Joelho · resposta em 24 h</div><h2>Como o joelho ficou depois do treino ${esc(last.letra)} de ${dataLonga(last.inicio)}?</h2><div class="choices">${[['melhor','Melhor'],['igual','Igual'],['pior','Pior']].map(([k,l])=>`<button class="btn ghost" data-act="dor24" data-v="${k}">${l}</button>`).join('')}</div></section>`;
+ if(!S.fb&&last&&last.dor24==null&&!myActive()&&now-last.fim>16*3600e3&&now-last.fim<6*DAY&&temEscalaDor(last))
+  check=`<section class="panel"><div class="eyebrow">Dor · resposta em 24 h</div><h2>Como você ficou depois do treino ${esc(last.letra)} de ${dataLonga(last.inicio)}?</h2><div class="small muted">Pense nos pontos avaliados na escala de dor.</div><div class="choices">${[['melhor','Melhor'],['igual','Igual'],['pior','Pior']].map(([k,l])=>`<button class="btn ghost" data-act="dor24" data-v="${k}">${l}</button>`).join('')}</div></section>`;
  const meta=metaDe(f),wk=weekCount(ws,aid);
  const dias=['S','T','Q','Q','S','S','D'].map((d,i)=>{const t0=ws+i*DAY;const s=ss.find(x=>x.inicio>=t0&&x.inicio<t0+DAY);const hj=now>=t0&&now<t0+DAY;
   return `<div class="fday ${hj?'hj':''}"><span class="fc ${s?'ok':''}" ${s?`title="Treino ${esc(s.letra)}"`:''}>${s?ICK.check:''}</span>${d}<span class="sr">${DIAS[i]}${s?', treino feito':hj?', hoje':''}</span></div>`}).join('');
@@ -378,7 +389,7 @@ function viewInicio(){
  else if(!myActive()&&!andOutro()){const ni=nextIdx0(f),nt=f.treinos[ni];
   if(!nt)hoje=`<section class="card"><h2>A ficha “${esc(f.nome)}” ainda não tem treinos</h2><button class="btn primary" data-act="open" data-v="${f.id}">Montar treinos</button></section>`;
   else{const hj=ehHoje(nt),dm=durMedia(f,nt,aid);
-   const lastNote=last?.dor24==='pior'&&now-last.fim<7*DAY?`<div class="note bad">Na última avaliação, o joelho piorou nas 24 h seguintes. Reduza a carga ou o volume dos exercícios de perna nesta sessão.</div>`:'';
+   const lastNote=last?.dor24==='pior'&&now-last.fim<7*DAY?`<div class="note bad">Na última avaliação, a dor piorou nas 24 h seguintes. Reduza a carga ou o volume dos exercícios com escala de dor nesta sessão.</div>`:'';
    const desc=nt.tipo==='corrida'?'Corrida · '+esc(corridaResumo(nt)):`${nt.ex.length} exercícios${dm?' · cerca de '+dm+' min':' · '+totalSets(nt)+' séries'}`;
    hoje=`<section class="card"><div class="row">${letter(LETRAS[ni],'l')}<div class="grow"><div class="klabel" style="color:${lcol(LETRAS[ni])}">${hj?'Seu treino de hoje':nt.dia?'Próximo treino · '+esc(nt.dia.toLowerCase()):'Seu próximo treino'}</div><h2>${esc(nt.nome)}</h2><div class="small muted">${desc}</div></div></div>${lastNote}
    ${temConteudo(nt)?`<button class="btn primary go" data-act="start" data-f="${f.id}" data-v="${nt.id}">${ICK.play}Começar treino</button>`:`<div class="note warn">Este treino ainda não tem exercícios. Inclua-os em Treinos.</div>`}
@@ -447,7 +458,7 @@ function viewFicha(){
    const k='dele:'+t.id+':'+e.id;
    if(C===k)return `<div class="miniconf"><span class="grow">Excluir “${esc(e.n)}”?</span><button class="btn sm danger" data-act="dele" data-t="${t.id}" data-v="${e.id}">Excluir</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`;
    const mi=media(e.n),gi=gr[ei];
-   return `<div class="exrow ${gi?'ingrp':''}">${mi?`<img class="thumb" src="${IMG_BASE+mi.img[0]}" alt="" loading="lazy">`:`<span class="n">${ei+1}</span>`}<div class="grow"><b>${esc(e.n)}</b><div class="meta">${e.s} × ${esc(e.r)} · ${TIPOS[e.tipo]}${e.tipo==='t'?' '+fmtSec(e.hold||30):''} · descanso ${mmss(e.desc||0)}${e.knee?' · joelho':''}</div>${gi&&gi[0]===ei?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))} com ${gi.slice(1).map(j=>esc(t.ex[j].n)).join(' e ')}</div>`:e.tec&&!TECNICAS[e.tec]?.grupo?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))}</div>`:''}${e.tipo!=='t'?`<label class="kgline">Carga <input class="kgin" data-ch="exkg" data-t="${t.id}" data-e="${e.id}" inputmode="decimal" value="${+e.kg>0?fmtKg(e.kg):''}" placeholder="—" aria-label="Carga de ${esc(e.n)} em kg"> kg</label>`:''}</div><div class="icons"><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="-1" ${ei===0?'disabled':''} aria-label="Subir">↑</button><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="1" ${ei===t.ex.length-1?'disabled':''} aria-label="Descer">↓</button><button class="ib" data-act="edite" data-t="${t.id}" data-v="${e.id}" aria-label="Editar">✎</button><button class="ib del" data-act="conf" data-v="${k}" aria-label="Excluir">✕</button></div></div>`}).join('');
+   return `<div class="exrow ${gi?'ingrp':''}">${mi?`<img class="thumb" src="${IMG_BASE+mi.img[0]}" alt="" loading="lazy">`:`<span class="n">${ei+1}</span>`}<div class="grow"><b>${esc(e.n)}</b><div class="meta">${e.s} × ${esc(e.r)} · ${TIPOS[e.tipo]}${e.tipo==='t'?' '+fmtSec(e.hold||30):''} · descanso ${mmss(e.desc||0)}${e.knee?' · escala de dor':''}</div>${gi&&gi[0]===ei?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))} com ${gi.slice(1).map(j=>esc(t.ex[j].n)).join(' e ')}</div>`:e.tec&&!TECNICAS[e.tec]?.grupo?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))}</div>`:''}${e.tipo!=='t'?`<label class="kgline">Carga <input class="kgin" data-ch="exkg" data-t="${t.id}" data-e="${e.id}" inputmode="decimal" value="${+e.kg>0?fmtKg(e.kg):''}" placeholder="—" aria-label="Carga de ${esc(e.n)} em kg"> kg</label>`:''}</div><div class="icons"><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="-1" ${ei===0?'disabled':''} aria-label="Subir">↑</button><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="1" ${ei===t.ex.length-1?'disabled':''} aria-label="Descer">↓</button><button class="ib" data-act="edite" data-t="${t.id}" data-v="${e.id}" aria-label="Editar">✎</button><button class="ib del" data-act="conf" data-v="${k}" aria-label="Excluir">✕</button></div></div>`}).join('');
   const adding=S.form&&S.form.t===t.id&&!S.form.e;const kt='delt:'+t.id;
   return `<section class="panel">
    <div class="row">${letter(LETRAS[ti])}<div class="grow field"><label class="lbl" for="tn-${t.id}">Treino ${LETRAS[ti]}</label><input id="tn-${t.id}" class="txt" data-ch="tnome" data-t="${t.id}" value="${esc(t.nome)}"></div></div>
@@ -467,7 +478,7 @@ function exForm(){const d=S.form.d;return `<div class="form" id="exform">
  <div class="small muted">Tempos em minutos e segundos: 1:00 = 1 minuto; 0:45 = 45 segundos; 2 = 2 minutos.</div>
  ${d.tipo!=='t'?`<div class="field"><label class="lbl" for="fx-kg">Carga de referência (kg, opcional)</label><input id="fx-kg" class="txt" data-f="kg" inputmode="decimal" value="${esc(d.kg||'')}" placeholder="Ex.: 20"></div>`:''}
  ${tecSelect(d)}
- <label class="check"><input type="checkbox" data-f="knee" ${d.knee?'checked':''}>Envolve o joelho (mostrar escala de dor)</label>
+ <label class="check"><input type="checkbox" data-f="knee" ${d.knee?'checked':''}>Avaliar dor neste exercício (escala de 0 a 10)</label>
  <label class="check"><input type="checkbox" data-f="reab" ${d.reab?'checked':''}>Exercício de reabilitação</label>
  <div class="field"><label class="lbl" for="fx-nota">Observação</label><input id="fx-nota" class="txt" data-f="nota" value="${esc(d.nota)}" placeholder="Ex.: amplitude de 0° a 60°"></div>
  <div class="field"><label class="lbl" for="fx-video">Link do vídeo (YouTube, opcional)</label><input id="fx-video" class="txt" data-f="video" inputmode="url" value="${esc(d.video||'')}" placeholder="https://youtu.be/…"></div>
@@ -504,7 +515,7 @@ function viewTreino(){
  <section class="panel" id="exCard">
   <div class="row" style="align-items:flex-start"><div class="grow"><div class="eyebrow">Exercício ${a.idx+1} de ${L.length}${ex.reab?' · reabilitação':''}</div><h2 class="exname">${esc(ex.n)}</h2></div><button class="btn sm ghost" data-act="adjopen">✎ Ajustar</button></div>
   ${S.adj&&S.adj.ex===ex.id?adjForm(ex):''}
-  <div class="presc"><span class="tag">${ex.s} × ${esc(ex.r)}</span>${ex.tipo!=='t'&&+ex.kg>0?`<span class="tag kg">Carga ${fmtKg(ex.kg)} kg</span>`:''}<span class="tag">Descanso ${mmss(ex.desc||0)}</span>${gtag}${tectag}${ex.knee?'<span class="tag knee">Joelho</span>':''}${ex.nota?`<span class="tag ${ex.reab?'reab':''}">${esc(ex.nota)}</span>`:''}</div>
+  <div class="presc"><span class="tag">${ex.s} × ${esc(ex.r)}</span>${ex.tipo!=='t'&&+ex.kg>0?`<span class="tag kg">Carga ${fmtKg(ex.kg)} kg</span>`:''}<span class="tag">Descanso ${mmss(ex.desc||0)}</span>${gtag}${tectag}${ex.knee?'<span class="tag knee">Escala de dor</span>':''}${ex.nota?`<span class="tag ${ex.reab?'reab':''}">${esc(ex.nota)}</span>`:''}</div>
   ${tecInfo}
   ${demo(ex)}
   <div class="small muted">${lastTxt}</div>
@@ -549,7 +560,7 @@ function stepper(k,label,v,step){return `<div class="stepper"><label class="lbl"
 function painBlock(v){
  const btns=[...Array(11)].map((_,i)=>`<button class="z${i<=2?0:i<=4?1:2} ${v===i?'sel':''}" data-act="dor" data-v="${i}">${i}</button>`).join('');
  const msg=v==null?'':v<=2?'<div class="note good">0 a 2: geralmente aceitável. Siga o plano.</div>':v<=4?'<div class="note warn">3 a 4: monitore e reduza carga ou amplitude se não ceder.</div>':'<div class="note bad">5 ou mais: interrompa ou modifique o exercício.</div>';
- return `<section class="panel"><div class="eyebrow">Dor no joelho durante o exercício</div><div class="pain">${btns}</div>${msg}</section>`}
+ return `<section class="panel"><div class="eyebrow">Dor durante o exercício</div><div class="pain">${btns}</div>${msg}</section>`}
 function restSheet(){const a=S.active,nx=curEx(),n=(a.ex[nx.id]?.sets.length||0)+1;
  return `<div class="sheet" id="sheet"><div class="in"><div class="eyebrow">Descanso</div>
  <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="var(--sunk)" stroke-width="8"/><circle id="ringArc" cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="t"><div><b id="restClock">${mmss(a.restTotal)}</b><span id="restLbl">de ${mmss(a.restTotal)}</span></div></div></div>
@@ -589,7 +600,7 @@ function evolucao(aid){
  const ss=sessDe(aid).filter(s=>!fsel||s.fichaId===fsel.id);
  const meta=metaDe(fsel||fa);
  const filtro=`<select id="evoSel" aria-label="Ficha">${fa?`<option value="ativa" ${S.evoF==='ativa'?'selected':''}>Ficha ativa: ${esc(fa.nome)}</option>`:''}<option value="todas" ${S.evoF==='todas'||(!fa&&S.evoF==='ativa')?'selected':''}>Todas as fichas</option>${fichasDe(aid).filter(f=>f.id!==fa?.id).map(f=>`<option value="${f.id}" ${S.evoF===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>`;
- if(!ss.length)return `${filtro}<div class="empty">Os gráficos de frequência, duração, carga e dor no joelho aparecem depois do primeiro treino salvo${fsel?' nesta ficha':''}.</div>`;
+ if(!ss.length)return `${filtro}<div class="empty">Os gráficos de frequência, duração, carga e dor aparecem depois do primeiro treino salvo${fsel?' nesta ficha':''}.</div>`;
  const ws=weekStart(Date.now());
  const weeks=[...Array(8)].map((_,i)=>{const w=ws-(7-i)*7*DAY;return {l:ddmm(w),v:weekCount(w,aid,fsel?.id)}});
  const last4=weeks.slice(4).reduce((a,w)=>a+w.v,0)/4;
@@ -606,7 +617,7 @@ function evolucao(aid){
   <div class="kpis"><div class="kpi"><b>${fmtKg(lastv)}</b><span>kg na última</span></div><div class="kpi"><b>${fmtKg(best)}</b><span>kg recorde</span></div><div class="kpi"><b style="color:${diff>0?'var(--good)':diff<0?'var(--bad)':'var(--ink)'}">${diff>0?'+':''}${fmtKg(diff)}</b><span>kg desde o início</span></div></div>
   <div class="small muted">Volume na última sessão: <b class="num" style="color:var(--ink)">${Math.round(pts[pts.length-1].vol).toLocaleString('pt-BR')} kg</b> (carga × repetições)</div>${bloco1rm(best1)}`}
  const painPts=ss.filter(s=>Object.values(s.ex||{}).some(r=>r.dor!=null)).slice(0,12).reverse().map(s=>({l:ddmm(s.inicio),v:Math.max(...Object.values(s.ex).filter(r=>r.dor!=null).map(r=>r.dor))}));
- const dor=painPts.length?`${line(painPts,{min:0,max:10,bands:true})}<div class="legend"><span><i style="background:var(--good-soft)"></i>0–2 aceitável</span><span><i style="background:var(--warn-soft)"></i>3–4 monitorar</span><span><i style="background:var(--bad-soft)"></i>5+ interromper</span></div>`:'<div class="empty">Marque a dor de 0 a 10 nos exercícios de joelho para ver a tendência aqui.</div>';
+ const dor=painPts.length?`${line(painPts,{min:0,max:10,bands:true})}<div class="legend"><span><i style="background:var(--good-soft)"></i>0–2 aceitável</span><span><i style="background:var(--warn-soft)"></i>3–4 monitorar</span><span><i style="background:var(--bad-soft)"></i>5+ interromper</span></div>`:'<div class="empty">Marque a dor de 0 a 10 nos exercícios com escala de dor para ver a tendência aqui.</div>';
  const psePts=ss.filter(s=>s.feedback?.pse).slice(0,12).reverse().map(s=>({l:ddmm(s.inicio),v:s.feedback.pse}));
  const pse=psePts.length?`<section class="panel"><div class="eyebrow">Esforço percebido · 1 a 10</div>${line(psePts,{min:0,max:10})}</section>`:'';
  return `${filtro}
@@ -614,14 +625,14 @@ function evolucao(aid){
  <section class="panel"><div class="eyebrow">Frequência semanal · últimas 8 semanas</div>${bars(weeks,{target:meta})}</section>
  <section class="panel"><div class="eyebrow">Duração dos treinos (min)</div>${bars(durItems)}<div class="legend">${[...new Set(ss.slice(0,10).map(s=>s.letra))].sort().map(l=>`<span><i style="background:${lcol(l)}"></i>Treino ${esc(l)}</span>`).join('')}</div></section>
  <section class="panel"><div class="eyebrow">Carga máxima por exercício</div>${carga}</section>
- <section class="panel"><div class="eyebrow">Dor no joelho · pior nota de cada treino</div>${dor}</section>${pse}${corridaEvo(aid)}`}
+ <section class="panel"><div class="eyebrow">Dor · pior nota de cada treino</div>${dor}</section>${pse}${corridaEvo(aid)}`}
 function historico(aid){
  const ss=sessDe(aid);
  const list=ss.map(s=>{const lines=(s.corrida?`<div class="l"><span>${fmtDist(s.corrida.dist)} em ${fmtHMS(s.corrida.tempo)}</span><span>${fmtRitmo(s.corrida.ritmo)}${s.corrida.fc?' · FC '+s.corrida.fc:''}${s.corrida.dor!=null?' · dor '+s.corrida.dor:''}${s.corrida.fonte&&s.corrida.fonte!=='manual'&&s.corrida.fonte!=='plano'?' · '+s.corrida.fonte.toUpperCase():''}</span></div>`:'')+Object.values(s.ex||{}).map(r=>`<div class="l"><span>${esc(r.n)}${r.dor!=null?` · dor ${r.dor}`:''}</span><span>${r.sets.map(x=>fmtSet(x,1)).join(' · ')}</span></div>`).join('')+(s.pulados?.length?`<div class="l"><span class="muted">Pulados</span><span>${esc(s.pulados.join(', '))}</span></div>`:'')+(s.conduzidoPor?`<div class="small muted">Treino conduzido pelo Personal ${esc(s.conduzidoNome||'')}</div>`:'');
   const fb=s.feedback?`<div class="fb">${s.feedback.pse?`Esforço ${s.feedback.pse}/10`:''}${s.feedback.txt?`${s.feedback.pse?' · ':''}“${esc(s.feedback.txt)}”`:''}</div>`:'';
   const del=S.confirmDel===s.id?`<div class="nav2"><button class="btn sm danger" data-act="delok" data-v="${s.id}">Excluir de vez</button><button class="btn sm ghost" data-act="delno">Manter</button></div>`:`<button class="btn sm ghost" data-act="del" data-v="${s.id}" style="align-self:flex-start">Excluir treino</button>`;
   const fn=ficha(s.fichaId)?.nome;
-  return `<details ${S.confirmDel===s.id?'open':''}><summary>${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted">${new Date(s.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${Math.round(s.dur/60)} min${s.feedback?.pse?` · esforço ${s.feedback.pse}`:''}${s.dor24?` · joelho 24 h: ${s.dor24}`:''}${s._p&&!S.cloud?' · aguardando envio':''}</div>${fn?`<div class="small muted">${esc(fn)}</div>`:''}</div><span class="muted">›</span></summary><div class="det">${fb}${lines||'<span class="muted">Sem séries registradas.</span>'}${del}</div></details>`}).join('');
+  return `<details ${S.confirmDel===s.id?'open':''}><summary>${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted">${new Date(s.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${Math.round(s.dur/60)} min${s.feedback?.pse?` · esforço ${s.feedback.pse}`:''}${s.dor24?` · dor em 24 h: ${s.dor24}`:''}${s._p&&!S.cloud?' · aguardando envio':''}</div>${fn?`<div class="small muted">${esc(fn)}</div>`:''}</div><span class="muted">›</span></summary><div class="det">${fb}${lines||'<span class="muted">Sem séries registradas.</span>'}${del}</div></details>`}).join('');
  return `<section class="panel" style="gap:0">${list||'<div class="empty">Nenhum treino salvo ainda.</div>'}</section>`}
 
 /* ================= Personal ================= */
@@ -664,7 +675,7 @@ function viewAluno(){
   ${S.g?'<div class="small muted">Desativar esconde o aluno do painel. Fichas e histórico são mantidos. Transferências devem ter a concordância do aluno.</div>':''}</section>`}
  const al=alertas(p.id);
  const fbp=S.fb&&S.sessions.find(x=>x.id===S.fb)?.alunoId===p.id?fbPanel():'';
- return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${fbp}${treinarJunto(p.id)}${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c}">${esc(x.t)}</div>`).join('')}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
+ return page(p.ativo===false?'Aluno inativo':'Aluno',esc(p.nome),`${fbp}${treinarJunto(p.id)}${al.length&&sub!=='cadastro'?`<div class="alerts">${al.map(x=>`<div class="al ${x.c} alr"><span class="grow">${esc(x.t)}</span>${x.k?`<button class="ciente" data-act="ciente" data-v="${esc(x.k)}">Ciente</button>`:''}</div>`).join('')}${al.filter(x=>x.k).length>1?`<button class="btn sm ghost" data-act="cientes" style="align-self:flex-end">Ciente de todos</button>`:''}</div>`:''}${st}${body}`,{back:S.g?'gestao':'alunos'})}
 /* ================= Render ================= */
 function render0(){
  if(!configOK)return viewConfig();
@@ -761,6 +772,8 @@ document.addEventListener('click',e=>{
    liberarPersonal(id).then(c=>{S.gmsg={c:'good',t:`${perfil(id)?.nome} agora é Personal. Código de convite: ${c}. Peça para ele sair e entrar de novo no app.`};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível liberar: '+(e.message||e)};render()});break}
   case 'revgo':revogarPersonal(v).then(()=>{S.conf=null;S.gmsg={c:'good',t:'Acesso de Personal revogado.'};render()}).catch(e=>{S.gmsg={c:'bad',t:'Não foi possível revogar: '+(e.message||e)};render()});break;
   case 'vid':S.vid=v;render();break;
+  case 'ciente':marcarCiente(S.sel,[v]);break;
+  case 'cientes':marcarCiente(S.sel,alertas(S.sel).filter(x=>x.k).map(x=>x.k));break;
   case 'semPno':LS.set('ft4.semP',1);render();break;
   /* navegação */
   case 'tab':if(v==='comunidade'){S.com=null;S.cf=null}go(v);if(v==='treino')keepAwake();break;

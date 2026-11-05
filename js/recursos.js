@@ -35,9 +35,9 @@ function fimDoCiclo(f){const ss=S.sessions.filter(s=>s.fichaId===f.id);const ini
 function venceTxt(f){const n=diasVence(f);if(n==null)return '';return n<0?`venceu em ${ddmmaa(f.vence)}`:n===0?'vence hoje':`vence em ${n} dia${n>1?'s':''} (${ddmmaa(f.vence)})`}
 /* Alertas extras para o painel do Personal. */
 function alertasExtras(aid){const out=[],p=perfil(aid),f=ativaDe(aid),now=Date.now();
- const da=diasAniv(p?.nasc);if(da!=null&&da<=7)out.push({c:'info',t:da===0?`Aniversário hoje (${idade(p.nasc)} anos) 🎉`:`Aniversário em ${da} dia${da>1?'s':''} (${ddmmaa(p.nasc).slice(0,5)})`});
- const dv=diasVence(f);if(dv!=null&&dv<=7)out.push({c:dv<0?'warn':'info',t:`Ficha “${f.nome}” ${venceTxt(f)}`});
- sessDe(aid).filter(s=>s.pulados?.length&&now-s.inicio<7*DAY).forEach(s=>out.push({c:'info',t:`Pulou ${s.pulados.length} exercício${s.pulados.length>1?'s':''} em ${ddmm(s.inicio)}: ${s.pulados.join(', ')}`}));
+ const da=diasAniv(p?.nasc);if(da!=null&&da<=7)out.push({k:'aniv:'+new Date().getFullYear(),c:'info',t:da===0?`Aniversário hoje (${idade(p.nasc)} anos) 🎉`:`Aniversário em ${da} dia${da>1?'s':''} (${ddmmaa(p.nasc).slice(0,5)})`});
+ const dv=diasVence(f);if(dv!=null&&dv<=7)out.push({k:'venc:'+f.id+':'+f.vence+(dv<0?':v':''),c:dv<0?'warn':'info',t:`Ficha “${f.nome}” ${venceTxt(f)}`});
+ sessDe(aid).filter(s=>s.pulados?.length&&now-s.inicio<7*DAY).forEach(s=>out.push({k:'pul:'+s.id,c:'info',t:`Pulou ${s.pulados.length} exercício${s.pulados.length>1?'s':''} em ${ddmm(s.inicio)}: ${s.pulados.join(', ')}`}));
  return out}
 /* Avisos para o próprio aluno, no Início. */
 function avisosAluno(){const p=ME(),f=ativaDe(S.me);let h='';

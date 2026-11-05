@@ -87,7 +87,7 @@ function viewRegistro(){const R=S.reg;if(!R){S.view='inicio';return render0()}
   <div class="grid2"><div class="field"><label class="lbl" for="cr-fc">FC média (opcional)</label><input id="cr-fc" class="txt" inputmode="numeric" data-reg="fc" value="${esc(R.fc)}" placeholder="bpm"></div><div class="field"><label class="lbl" for="cr-data">Data e hora</label><input id="cr-data" class="txt" type="datetime-local" data-reg="data" value="${dtv}"></div></div>
   <div class="field"><label class="lbl" for="cr-ten">Tênis</label>${ten.length?`<select id="cr-ten" data-reg="tenis"><option value="">Não informar</option>${ten.map(x=>`<option value="${x.id}" ${R.tenis===x.id?'selected':''}>${esc(x.nome)} · ${fmtKmT(kmTenis(x))}</option>`).join('')}</select>`:'<div class="small muted">Cadastre seus tênis em Meu perfil para acompanhar a quilometragem.</div>'}</div>
   <div class="field"><span class="lbl">Esforço percebido (1 = muito leve · 10 = máximo)</span><div class="pse">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-act="regpse" data-v="${n}" class="${R.pse===n?'sel':''}">${n}</button>`).join('')}</div></div>
-  <div class="field"><span class="lbl">Dor no joelho (opcional)</span><div class="pain">${[...Array(11)].map((_,i)=>`<button class="z${i<=2?0:i<=4?1:2} ${R.dor===i?'sel':''}" data-act="regdor" data-v="${i}">${i}</button>`).join('')}</div></div>
+  <div class="field"><span class="lbl">Dor (opcional)</span><div class="pain">${[...Array(11)].map((_,i)=>`<button class="z${i<=2?0:i<=4?1:2} ${R.dor===i?'sel':''}" data-act="regdor" data-v="${i}">${i}</button>`).join('')}</div></div>
   <div class="field"><label class="lbl" for="cr-obs">Observação</label><input id="cr-obs" class="txt" data-reg="obs" value="${esc(R.obs)}" placeholder="Ex.: calor, subida forte no km 3"></div>
   ${R.err?`<div class="note bad">${esc(R.err)}</div>`:''}
   <div class="nav2"><button class="btn ghost" data-act="regcancel">${R.plano?'Descartar':'Cancelar'}</button><button class="btn primary" data-act="regsave">Salvar corrida</button></div></section>`,{back:'inicio'})}
@@ -110,11 +110,11 @@ function tenisBox(){const l=ME()?.tenis||[];const T=S.ten;
 const kmSemana=(aid,ws)=>S.sessions.filter(s=>s.alunoId===aid&&s.corrida&&weekStart(s.inicio)===ws).reduce((a,s)=>a+s.corrida.dist/1000,0);
 function volumeAlerta(aid){const ws=weekStart(Date.now()),W=7*DAY;const atual=kmSemana(aid,ws),ant=kmSemana(aid,ws-W),ant2=kmSemana(aid,ws-2*W);
  const r=(a,b)=>b>0&&a>b*1.1?Math.round((a/b-1)*100):0;
- if(r(atual,ant))return {c:'warn',t:`Volume de corrida desta semana (${atual.toFixed(1).replace('.',',')} km) já está ${r(atual,ant)}% acima da semana passada (${ant.toFixed(1).replace('.',',')} km). A regra prática é aumentar no máximo cerca de 10% por semana.`};
- if(r(ant,ant2))return {c:'warn',t:`Na semana passada o volume de corrida subiu ${r(ant,ant2)}% (de ${ant2.toFixed(1).replace('.',',')} para ${ant.toFixed(1).replace('.',',')} km). A regra prática é aumentar no máximo cerca de 10% por semana.`};
+ if(r(atual,ant))return {k:'vol:'+ws,c:'warn',t:`Volume de corrida desta semana (${atual.toFixed(1).replace('.',',')} km) já está ${r(atual,ant)}% acima da semana passada (${ant.toFixed(1).replace('.',',')} km). A regra prática é aumentar no máximo cerca de 10% por semana.`};
+ if(r(ant,ant2))return {k:'vol:'+(ws-W),c:'warn',t:`Na semana passada o volume de corrida subiu ${r(ant,ant2)}% (de ${ant2.toFixed(1).replace('.',',')} para ${ant.toFixed(1).replace('.',',')} km). A regra prática é aumentar no máximo cerca de 10% por semana.`};
  return null}
 function corridaAlertas(aid){const out=[];const v=volumeAlerta(aid);if(v)out.push(v);const now=Date.now();
- S.sessions.filter(s=>s.alunoId===aid&&s.corrida&&now-s.inicio<14*DAY&&s.corrida.dor>=5).forEach(s=>out.push({c:'bad',t:`Dor ${s.corrida.dor}/10 no joelho na corrida de ${ddmm(s.inicio)}`}));return out}
+ S.sessions.filter(s=>s.alunoId===aid&&s.corrida&&now-s.inicio<14*DAY&&s.corrida.dor>=5).forEach(s=>out.push({k:'cdor:'+s.id,c:'bad',t:`Dor ${s.corrida.dor}/10 na corrida de ${ddmm(s.inicio)}`}));return out}
 function corridaEvo(aid){const cs=S.sessions.filter(s=>s.alunoId===aid&&s.corrida).sort((a,b)=>a.inicio-b.inicio);if(!cs.length)return '';
  const ws=weekStart(Date.now());const weeks=[...Array(8)].map((_,i)=>{const w=ws-(7-i)*7*DAY;return {l:ddmm(w),v:+kmSemana(aid,w).toFixed(1)}});
  const m4=weeks.slice(4).reduce((a,w)=>a+w.v,0)/4;const maior=Math.max(...cs.map(s=>s.corrida.dist));const bons=cs.filter(s=>s.corrida.dist>=1000);const melhor=bons.length?Math.min(...bons.map(s=>s.corrida.ritmo)):0;
