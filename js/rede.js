@@ -308,8 +308,10 @@ function denunciaForm(x){const D=S.den;if(!D||D.alvo!==x.id)return PM()?'':`<but
   <div class="small muted">A denúncia vai para a administração da plataforma. O Personal não vê quem denunciou.</div>
   <div class="nav2"><button class="btn ghost" data-act="dencancel">Cancelar</button><button class="btn danger" data-act="densend">Enviar denúncia</button></div></div>`}
 function denunciasBox(){const ab=(S.denuncias||[]).filter(d=>d.status==='aberta').sort((a,b)=>b.criado-a.criado);if(!ab.length)return '';
+ const post=d=>`<div style="display:grid;gap:4px"><div><b>Recado de ${esc(d.alvoNome||'membro')}</b> · comunidade “${esc(d.comNome||'')}” · ${esc(d.motivo)}</div><div class="small">“${esc(d.texto||'')}”</div><div class="small muted">por ${esc(perfil(d.autorId)?.nome||'usuário')} · ${ddmm(d.criado)}</div>
+  <div class="nav2"><button class="btn sm ghost" data-act="denarq" data-v="${d.id}">Arquivar</button><button class="btn sm danger" data-act="denpost" data-v="${d.id}">Apagar recado</button></div></div>`;
  return `<section class="panel" style="gap:10px;border-color:var(--bad)"><div class="eyebrow" style="color:var(--bad)">Denúncias abertas · ${ab.length}</div>
- ${ab.map(d=>`<div style="display:grid;gap:4px"><div><b>${esc(d.alvoNome)}</b> · ${esc(d.motivo)}</div>${d.texto?`<div class="small">“${esc(d.texto)}”</div>`:''}<div class="small muted">por ${esc(perfil(d.autorId)?.nome||'usuário')} · ${ddmm(d.criado)}</div>
+ ${ab.map(d=>d.tipo==='post'?post(d):`<div style="display:grid;gap:4px"><div><b>${esc(d.alvoNome)}</b> · ${esc(d.motivo)}</div>${d.texto?`<div class="small">“${esc(d.texto)}”</div>`:''}<div class="small muted">por ${esc(perfil(d.autorId)?.nome||'usuário')} · ${ddmm(d.criado)}</div>
   <div class="nav2"><button class="btn sm ghost" data-act="denarq" data-v="${d.id}">Arquivar</button><button class="btn sm danger" data-act="conf" data-v="rev:${d.alvoId}">Revogar Personal</button></div></div>`).join('<hr style="border:0;border-top:1px solid var(--line);width:100%">')}</section>`}
 
 /* ---------- Importação de academias do OpenStreetMap ---------- */
@@ -365,6 +367,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'denopen':S.den={alvo:v,motivo:MOTIVOS[0],texto:''};render();break;
   case 'dencancel':S.den=null;render();break;
   case 'densend':{const D=S.den,x=pub(D.alvo)||{};run(fdb.collection('denuncias').doc(uid('d')).set({alvoId:D.alvo,alvoNome:x.nome||'',motivo:D.motivo,texto:(D.texto||'').trim(),autorId:S.me,status:'aberta',criado:Date.now()}),()=>{S.den=null;S.bMsg={c:'good',t:'Denúncia enviada. Obrigado por avisar.'};render()},'b');break}
+  case 'denpost':{const d=(S.denuncias||[]).find(x=>x.id===v);if(!d)break;run(fdb.collection('comunidades').doc(d.comId).collection('posts').doc(d.postId).delete().catch(()=>{}).then(()=>upd('denuncias',v,{status:'tratada',tratada:Date.now()})),()=>{toast('Recado apagado.');render()});break}
   case 'denarq':run(upd('denuncias',v,{status:'arquivada',tratada:Date.now()}),()=>render());break;
   case 'osmgo':osmBuscar();break;
   case 'osmall':S.osm.items.forEach(i=>{if(!i.dup)i.sel=v==='1'});render();break;

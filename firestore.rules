@@ -152,5 +152,104 @@ service cloud.firestore {
         || (signed() && antigo().get('alunoId', '') == me())
         || (isP() && pid(antigo()) == me());
     }
+
+    // ================= Comunidades =================
+    // Criadas por aluno ou Personal. Entrada só com aprovação do criador. Ninguém lê treinos de outra
+    // pessoa: cada membro grava o próprio placar, e as regras recusam números implausíveis.
+    function comDoc(cid) { return get(pth('comunidades', cid)).data; }
+    function mPath(cid, uid) { return /databases/$(database)/documents/comunidades/$(cid)/membros/$(uid); }
+    function souAtivo(cid) { return signed() && exists(mPath(cid, me())) && get(mPath(cid, me())).data.status == 'ativo'; }
+    function souCriador(cid) { return signed() && comDoc(cid).criadorId == me(); }
+    function textoOK(t, max) { return t is string && t.size() <= max; }
+    function placarOK(p) {
+      return p.keys().hasOnly(['sem', 'semN', 'mes', 'mesN', 'kmSem', 'kmMes', 'seq', 'at'])
+        && p.get('semN', 0) is number && p.get('semN', 0) >= 0 && p.get('semN', 0) <= 14
+        && p.get('mesN', 0) is number && p.get('mesN', 0) >= 0 && p.get('mesN', 0) <= 62
+        && p.get('kmSem', 0) is number && p.get('kmSem', 0) >= 0 && p.get('kmSem', 0) <= 300
+        && p.get('kmMes', 0) is number && p.get('kmMes', 0) >= 0 && p.get('kmMes', 0) <= 1000
+        && p.get('seq', 0) is number && p.get('seq', 0) >= 0 && p.get('seq', 0) <= 520;
+    }
+
+    function progOK(d, n) {
+      return (d.tipo == 'treinos' && n <= ((d.fim - d.inicio) / 86400000 + 1) * 2)
+        || (d.tipo == 'km' && n <= ((d.fim - d.inicio) / 86400000 + 1) * 50)
+        || (d.tipo == 'semanas' && n <= (d.fim - d.inicio) / 604800000 + 2);
+    }
+
+    match /codigosCom/{codigo} {
+      allow get: if signed();
+      allow create: if signed() && getAfter(pth('comunidades', novo().cid)).data.criadorId == me();
+      allow delete: if isG() || (signed() && get(pth('comunidades', antigo().cid)).data.criadorId == me());
+    }
+
+    match /comunidades/{cid} {
+      allow get: if signed();
+      allow list: if isG();
+      allow create: if signed() && novo().criadorId == me()
+        && textoOK(novo().nome, 40) && novo().nome.size() >= 2 && textoOK(novo().get('desc', ''), 200)
+        && textoOK(novo().get('aviso', ''), 280);
+      allow update: if isG() || (signed() && antigo().criadorId == me()
+        && textoOK(novo().nome, 40) && novo().nome.size() >= 2 && textoOK(novo().get('desc', ''), 200)
+        && textoOK(novo().get('aviso', ''), 280)
+        && (novo().criadorId == me()
+            || (exists(mPath(cid, novo().criadorId)) && get(mPath(cid, novo().criadorId)).data.status == 'ativo')));
+      allow delete: if isG() || (signed() && antigo().criadorId == me());
+
+      match /membros/{uid} {
+        allow read: if isG() || (signed() && me() == uid) || souCriador(cid)
+          || (souAtivo(cid) && antigo().status == 'ativo');
+        // Pedido de entrada (pendente) ou o próprio criador ao criar a comunidade.
+        allow create: if signed() && me() == uid && novo().uid == uid
+          && textoOK(novo().nome, 30) && novo().nome.size() >= 1
+          && !novo().keys().hasAny(['placar', 'zeradoEm'])
+          && (novo().status == 'pendente'
+              || (novo().status == 'ativo' && getAfter(pth('comunidades', cid)).data.criadorId == me()));
+        allow update: if
+          // O membro ativo atualiza o próprio nome e placar (com limites de bom senso).
+             (signed() && me() == uid && antigo().status == 'ativo' && so(['nome', 'placar'])
+               && textoOK(novo().nome, 30) && novo().nome.size() >= 1 && placarOK(novo().get('placar', {})))
+          // Quem foi recusado pode pedir de novo.
+          || (signed() && me() == uid && antigo().status == 'recusado' && novo().status == 'pendente'
+               && so(['status', 'nome', 'pedido']) && textoOK(novo().nome, 30))
+          // O criador aprova, recusa ou zera o placar de outro membro.
+          || (souCriador(cid) && me() != uid && so(['status', 'entrou', 'placar', 'zeradoEm'])
+               && novo().status in ['ativo', 'recusado']
+               && (novo().get('placar', {}) == antigo().get('placar', {}) || novo().get('placar', {}).size() == 0))
+          || isG();
+        allow delete: if isG() || (signed() && me() == uid) || souCriador(cid);
+      }
+
+      match /posts/{pid} {
+        allow read: if isG() || souAtivo(cid);
+        allow create: if souAtivo(cid) && novo().autorId == me()
+          && novo().keys().hasOnly(['autorId', 'autorNome', 'texto', 'tipo', 'criado', 'reacoes'])
+          && textoOK(novo().texto, 280) && novo().texto.size() >= 1 && textoOK(novo().autorNome, 40)
+          && novo().tipo in ['texto', 'checkin'] && novo().get('reacoes', {}).size() == 0;
+        allow update: if souAtivo(cid) && so(['reacoes'])
+          && novo().reacoes.diff(antigo().get('reacoes', {})).affectedKeys().hasOnly([me()])
+          && (!(me() in novo().reacoes) || novo().reacoes[me()] in ['👏', '🔥', '💪']);
+        allow delete: if isG() || (signed() && antigo().autorId == me()) || souCriador(cid);
+      }
+
+      match /desafios/{did} {
+        allow read: if isG() || souAtivo(cid);
+        allow create, update: if souCriador(cid)
+          && textoOK(novo().titulo, 60) && novo().titulo.size() >= 2
+          && novo().tipo in ['treinos', 'km', 'semanas']
+          && novo().meta is number && novo().meta > 0 && novo().meta <= 5000
+          && novo().inicio is number && novo().fim is number
+          && novo().fim > novo().inicio && novo().fim - novo().inicio <= 366 * 86400000;
+        allow delete: if isG() || souCriador(cid);
+
+        // Progresso de cada membro: até 2 treinos por dia, 50 km por dia e o número de semanas do período.
+        match /prog/{uid} {
+          allow read: if isG() || souAtivo(cid);
+          allow create, update: if signed() && me() == uid && souAtivo(cid)
+            && novo().keys().hasOnly(['n', 'nome', 'at']) && novo().n is number && novo().n >= 0
+            && progOK(get(/databases/$(database)/documents/comunidades/$(cid)/desafios/$(did)).data, novo().n);
+          allow delete: if isG() || (signed() && me() == uid) || souCriador(cid);
+        }
+      }
+    }
   }
 }

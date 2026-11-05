@@ -122,6 +122,15 @@ O app não envia dados a nenhuma IA. A ficha fica marcada como "sugestão de IA"
 
 As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMAP.md).
 
+### Comunidades (nov/2026)
+
+- **Criar e entrar:** aluno ou Personal cria a comunidade em *Comunidade → + Criar comunidade* (até 5 por pessoa, até 100 membros). Quem tem o código toca em *Entrar com código*, concorda em participar do ranking e dos desafios e fica aguardando: **o criador aprova ou recusa** em *Membros*.
+- **Mural:** recados de até 280 caracteres, reações 👏 🔥 💪, aviso fixado pelo criador. Sem mensagens privadas. Ao concluir o treino, a opção *Compartilhar na comunidade* publica só "concluiu o treino A · 52 min".
+- **Ranking:** treinos na semana, no mês, semanas seguidas cumprindo a meta e km de corrida no mês. Só conta treino de pelo menos 15 minutos com alguma série registrada, até 2 por dia. Carga não entra.
+- **Desafios:** o criador lança desafios de número de treinos, km de corrida ou semanas cumprindo a meta, com barra de progresso de cada membro.
+- **Moderação:** o criador apaga recados, zera o placar ou remove membros, gera novo código e pode passar a comunidade a outro membro ou encerrá-la. Denúncias de recados vão para *Gestão*.
+- **Privacidade e limites:** ninguém lê os treinos de outra pessoa; cada app publica só o próprio placar, e as regras do Firestore recusam números implausíveis (mais de 14 treinos na semana, 62 no mês, 300 km na semana, 1.000 km no mês, ou acima de 2 treinos/50 km por dia nos desafios).
+
 ### Termos e privacidade
 
 `termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.
@@ -140,6 +149,7 @@ Abra o endereço no Chrome, toque em **⋮** e depois em **Instalar app** (ou **
 | `js/app.js` | Lógica do app |
 | `js/config.js` | Configuração do Firebase |
 | `js/exercicios.js` | Fotos e instruções dos exercícios (Free Exercise DB) |
+| `js/comunidades.js` | Comunidades: mural, aprovação, ranking e desafios |
 | `js/recursos.js` | Técnicas avançadas, aniversário, vencimento, avisos ao Personal e condução do treino |
 | `ROADMAP.md` | Atualizações futuras combinadas |
 | `firestore.rules` | Regras de acesso ao banco |

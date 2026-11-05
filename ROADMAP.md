@@ -15,6 +15,12 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 | Lembrete de ausência | Após X dias sem treinar: "Lembramos de você, estamos sentindo a sua falta!" |
 | Reforço da meta semanal | Push ao fechar a semana: "Parabéns, você concluiu todos os treinos desta semana!" Hoje a mensagem aparece no app ao concluir o último treino da meta. |
 
+## Comunidades · quando houver o plano Blaze
+
+- Placar e progresso dos desafios recalculados no servidor (Cloud Function) a partir dos treinos salvos, em vez de informados pelo app de cada membro.
+- Fotos nos recados do mural (Firebase Storage), reduzidas no celular antes do envio.
+- Notificações: pedido de entrada para o criador, aprovação para o membro, reações e novo desafio.
+
 ## Outras ideias registradas
 
 - Geração de ficha por IA dentro do app (plano Premium). Hoje a ficha é criada colando a resposta de uma IA externa.
@@ -26,3 +32,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **03/11/2026 · Rodadas 1 e 2 (sugestões do Carlos Igor):** carga visível e editável na ficha; edição das séries e ajuste do exercício durante o treino, salvando na ficha; fotos sempre visíveis; pular exercício; técnicas avançadas (drop-set, bi-set, tri-set, rest-pause, cluster, pirâmides, negativa, FST-7); mensagem de meta semanal; data de nascimento e aviso de aniversário; vencimento da ficha; treinos de hoje em tempo real no painel do Personal; Personal conduzindo o treino do aluno no próprio celular.
 - **04/11/2026 · Fichas:** ficha vazia sem treinos; modelos do Personal privados por padrão, com a opção “Disponível para meus alunos” (regras do Firestore atualizadas).
 - **04/11/2026 · Aparência e lista do treino:** tema (claro, escuro, automático) e cor por modo (aluno e Personal), salvos na conta; botões ✓ (feito, com valores previstos) e ✕ (pular) na lista do treino.
+- **05/11/2026 · Comunidades (etapas 1 e 2):** criação por aluno ou Personal, entrada com aprovação do criador, mural de recados curtos, check-in opcional, aviso fixado, moderação e denúncias, ranking (semana, mês, constância, km) e desafios, com limites de bom senso nas regras.

@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-6';
+const APP_VERSAO='2026.11.05-1';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -104,7 +104,7 @@ const NORM={perfis:normP,fichas:normF,sessions:normS,vinculos:x=>x,academias:x=>
 const S={perfis:[],fichas:[],sessions:[],personais:[],vinculos:[],academias:[],pubs:[],denuncias:[],modo:LS.get('ft4.modo','personal'),pdoc:null,me:null,g:false,p:false,gsub:'alunos',gf:'',view:'login',auth:{mode:'entrar',email:'',nome:'',err:'',ok:''},newU:null,
  sel:null,sub:'fichas',edit:null,back:'fichas',form:null,conf:null,newF:null,confirmEnd:false,confirmDel:null,
  chartEx:LS.get('ft.chartEx',''),evoF:'ativa',fb:null,fbv:null,cloud:false,ready:false,imp:null,vid:null,
- active:LS.get('ft4.active',null)};
+ coms:{},active:LS.get('ft4.active',null)};
 const cacheCol=()=>{};
 const saveActive=()=>{LS.set('ft4.active',S.active);if(typeof andSync==='function')andSync()};
 
@@ -273,6 +273,7 @@ function atualizaCargas(a){const f=ficha(a.fichaId);if(!f||!canEdit(f))return;co
 
 /* ================= Peças comuns ================= */
 const IC={
+ comunidade:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
  inicio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
  fichas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
  progresso:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg>',
@@ -284,7 +285,7 @@ const IC={
  gestao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
  modelos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>'
 };
-function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos']]:[['inicio','Início'],['fichas','Treinos'],['progresso','Progresso'],['perfil','Perfil']]).concat(S.g?[['gestao','Gestão']]:[]);
+function tabs(){const list=(PM()?[['alunos','Alunos'],['modelos','Modelos'],['comunidade','Comunidade']]:[['inicio','Início'],['fichas','Treinos'],['progresso','Progresso'],['comunidade','Comunidade'],['perfil','Perfil']]).concat(S.g?[['gestao','Gestão']]:[]);
  const home=PM()?'alunos':S.g?'gestao':'alunos';const map={ficha:S.back==='aluno'?home:S.back,aluno:home,perfil:PM()?'':'perfil',busca:'',ia:S.ia?.back||'',corridaReg:'inicio',evolucao:'progresso',historico:'progresso'};const cur=S.view in map?map[S.view]:S.view;
  return `<nav class="tabs"><div class="in" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${cur===k?'on':''}">${IC[k]}${l}</button>`).join('')}</div></nav>`}
 function syncTag(){return `<div id="syncTag" class="sync ${S.cloud?'on':''}"><i></i><span>${S.cloud?'Sincronizado':'Sem conexão · salva depois'}</span></div>`}
@@ -334,7 +335,7 @@ async function submitAuth(){const A=S.auth;A.email=($('#au-email')?.value||'').t
 
 /* ================= Aluno: Início ================= */
 function fbPanel(){const s=S.sessions.find(x=>x.id===S.fb);if(!s)return '';const pc=!!s.conduzidoPor;
- return `<section class="form"><div class="eyebrow">Treino ${esc(s.letra)} salvo · ${Math.round(s.dur/60)} min${pc?' · conduzido por você':''}</div>${pc?'':metaMsgHTML()}<h2>${pc?'Como o aluno avaliou o treino?':'Como foi o treino?'}</h2>
+ return `<section class="form"><div class="eyebrow">Treino ${esc(s.letra)} salvo · ${Math.round(s.dur/60)} min${pc?' · conduzido por você':''}</div>${pc?'':metaMsgHTML()}<h2>${pc?'Como o aluno avaliou o treino?':'Como foi o treino?'}</h2>${pc?'':checkinBox(s)}
  <div class="field"><span class="lbl">Esforço percebido (1 = muito leve · 10 = máximo)</span><div class="pse">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-act="fbv" data-v="${n}" class="${S.fbv===n?'sel':''}">${n}</button>`).join('')}</div></div>
  <div class="field"><label class="lbl" for="fb-txt">${pc?'Observação sobre o treino (opcional)':'Recado para o Personal (opcional)'}</label><textarea id="fb-txt" class="txt" placeholder="Ex.: senti o joelho no leg press na última série"></textarea></div>
  <div class="nav2"><button class="btn ghost" data-act="fbskip">Pular</button><button class="btn primary" data-act="fbsave">Enviar</button></div></section>`}
@@ -672,6 +673,7 @@ function render0(){
  const v=S.view;
  if(v==='treino'&&myActive())return myActive().tipo==='corrida'?viewCorrida():viewTreino();
  if(v==='perfil')return viewPerfil();
+ if(v==='comunidade')return viewComunidades();
  if(v==='busca')return viewBusca();
  if(v==='ia')return viewIA();
  if(v==='aluno'&&isPT())return viewAluno();
@@ -756,7 +758,7 @@ document.addEventListener('click',e=>{
   case 'vid':S.vid=v;render();break;
   case 'semPno':LS.set('ft4.semP',1);render();break;
   /* navegação */
-  case 'tab':go(v);if(v==='treino')keepAwake();break;
+  case 'tab':if(v==='comunidade'){S.com=null;S.cf=null}go(v);if(v==='treino')keepAwake();break;
   case 'aluno':S.sel=v;S.sub='fichas';S.evoF='ativa';go('aluno');break;
   case 'psub':S.psub=v;S.confirmDel=null;S.evoF='ativa';if(S.view!=='progresso'){go('progresso')}else render();break;
   case 'sub':S.sub=v;S.imp=null;S.cadMsg='';S.conf=null;S.newF=null;S.confirmDel=null;S.evoF='ativa';render();break;
