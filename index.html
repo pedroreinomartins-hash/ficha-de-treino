@@ -149,7 +149,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .check input{width:22px;height:22px;accent-color:var(--accent)}
 .exrow{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .exrow:first-child{border-top:0}
-.exrow .n{font-family:var(--display);font-weight:700;color:var(--muted);width:20px;flex:none;text-align:right}
+.exrow .n{font-family:var(--display);font-weight:700;font-size:18px;color:var(--muted);width:22px;flex:none;text-align:right}
+.exrow.cur .n{color:var(--accent)}
+.exrow.cur b{color:var(--accent)}
+#exCard{scroll-margin-top:12px}
 .exrow .meta{font-size:13px;color:var(--muted)}
 .ib{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--sunk);font-size:16px;flex:none}
 .ib.del{color:var(--bad)}

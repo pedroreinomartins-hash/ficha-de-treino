@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.04-5';
+const APP_VERSAO='2026.11.04-6';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -499,7 +499,7 @@ function viewTreino(){
  return `<main class="wrap" style="padding-bottom:${a.restEnd?'380px':'40px'}">
  <header class="shead">${letter(a.letra)}<div class="grow"><div class="clock" id="elapsed">${hms((Date.now()-a.inicio)/1000)}</div><div class="small muted" id="wakeTag">${wake?'Tela ativa':'Tela pode apagar'}</div></div><button class="btn sm ghost" data-act="tab" data-v="inicio">Menu</button><button class="btn sm danger" data-act="endask">Encerrar</button></header>
  ${confirm}${cond}<div class="strip">${strip}</div>${exLista()}
- <section class="panel">
+ <section class="panel" id="exCard">
   <div class="row" style="align-items:flex-start"><div class="grow"><div class="eyebrow">Exercício ${a.idx+1} de ${L.length}${ex.reab?' · reabilitação':''}</div><h2 class="exname">${esc(ex.n)}</h2></div><button class="btn sm ghost" data-act="adjopen">✎ Ajustar</button></div>
   ${S.adj&&S.adj.ex===ex.id?adjForm(ex):''}
   <div class="presc"><span class="tag">${ex.s} × ${esc(ex.r)}</span>${ex.tipo!=='t'&&+ex.kg>0?`<span class="tag kg">Carga ${fmtKg(ex.kg)} kg</span>`:''}<span class="tag">Descanso ${mmss(ex.desc||0)}</span>${gtag}${tectag}${ex.knee?'<span class="tag knee">Joelho</span>':''}${ex.nota?`<span class="tag ${ex.reab?'reab':''}">${esc(ex.nota)}</span>`:''}</div>
@@ -512,10 +512,12 @@ function viewTreino(){
  ${ex.knee?painBlock(r.dor):''}
  <div class="nav2"><button class="btn ghost" data-act="go" data-v="${Math.max(0,a.idx-1)}" ${a.idx===0?'disabled':''}>‹ Anterior</button><button class="btn ghost" data-act="go" data-v="${Math.min(L.length-1,a.idx+1)}" ${a.idx===L.length-1?'disabled':''}>Seguinte ›</button></div>
  </main>${a.restEnd?restSheet():''}`}
+/* Leva a tela ao cartão de execução do exercício escolhido (a lista do treino continua aberta). */
+function irExecucao(){const c=document.getElementById('exCard');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});else window.scrollTo(0,0)}
 /* Lista do treino com marcação para pular exercícios. */
 function exLista(){const a=S.active,L=a.exList;if(!S.exl)return `<button class="btn sm ghost" data-act="exl" style="align-self:flex-start">☰ Lista do treino</button>`;
  return `<section class="panel" style="gap:4px"><div class="row"><div class="eyebrow grow">Lista do treino · ✓ feito · ✕ pular</div><button class="btn sm ghost" data-act="exl">Fechar</button></div>
- ${L.map((e,i)=>{const n=a.ex[e.id]?.sets.length||0,pk=isSkip(e),m=media(e.n);return `<div class="exrow">${m?`<img class="thumb" src="${IMG_BASE+m.img[0]}" alt="" loading="lazy">`:`<span class="n">${i+1}</span>`}<button class="grow" style="text-align:left" data-act="go" data-v="${i}"><b style="${pk?'text-decoration:line-through;opacity:.6':''}">${esc(e.n)}</b><div class="meta">${n}/${e.s} séries${e.tec?' · '+esc(tecNome(e.tec)):''}${+e.kg>0?' · '+fmtKg(e.kg)+' kg':''}</div></button><div class="okbs"><button class="okb ok ${n>=e.s?'on':''}" data-act="exok" data-v="${e.id}" aria-pressed="${n>=e.s}" aria-label="Marcar ${esc(e.n)} como feito">✓</button><button class="okb off ${pk?'on':''}" data-act="exoff" data-v="${e.id}" aria-pressed="${pk}" aria-label="Pular ${esc(e.n)}">✕</button></div></div>`}).join('')}</section>`}
+ ${L.map((e,i)=>{const n=a.ex[e.id]?.sets.length||0,pk=isSkip(e),m=media(e.n);return `<div class="exrow ${i===a.idx?'cur':''}"><span class="n">${i+1}</span>${m?`<img class="thumb" src="${IMG_BASE+m.img[0]}" alt="" loading="lazy">`:''}<button class="grow" style="text-align:left" data-act="go" data-v="${i}" ${i===a.idx?'aria-current="true"':''}><b style="${pk?'text-decoration:line-through;opacity:.6':''}">${esc(e.n)}</b><div class="meta">${n}/${e.s} séries${e.tec?' · '+esc(tecNome(e.tec)):''}${+e.kg>0?' · '+fmtKg(e.kg)+' kg':''}</div></button><div class="okbs"><button class="okb ok ${n>=e.s?'on':''}" data-act="exok" data-v="${e.id}" aria-pressed="${n>=e.s}" aria-label="Marcar ${esc(e.n)} como feito">✓</button><button class="okb off ${pk?'on':''}" data-act="exoff" data-v="${e.id}" aria-pressed="${pk}" aria-label="Pular ${esc(e.n)}">✕</button></div></div>`}).join('')}</section>`}
 /* Editar uma série já registrada. */
 function setEditor(ex,x){const D=S.eset.d;const ins=x.sec!=null?`<div class="steppers" style="grid-template-columns:1fr">${stepper('esec','Tempo (min:seg)',fmtMS(D.sec),15)}</div>`:`<div class="steppers">${stepper('ekg','Carga (kg)',fmtKg(D.kg),2.5)}${stepper('ereps','Repetições',D.reps,1)}</div>`;
  return `<div class="form" style="gap:10px"><div class="eyebrow">Editar série ${S.eset.i+1}${x.x?.length?' · drops/blocos mantidos':''}</div>${ins}<div class="nav2"><button class="btn ghost" data-act="esetno">Cancelar</button><button class="btn primary" data-act="esetok">Salvar</button></div><button class="btn sm ghost" style="color:var(--bad)" data-act="esetdel">Excluir esta série</button></div>`}
@@ -792,7 +794,7 @@ document.addEventListener('click',e=>{
   case 'rpin':{const p=perfil(S.sel);fbAuth.sendPasswordResetEmail(p.email).then(()=>{S.cadMsg='Link de redefinição enviado para '+p.email+'.';render()}).catch(e=>{S.cadMsg=authMsg(e);render()});break}
   case 'pativo':{const p=perfil(S.sel);p.ativo=p.ativo===false;put('perfis',p);render();break}
   /* sessão */
-  case 'go':a.idx=+v;S.eset=null;S.adj=null;saveActive();render();window.scrollTo(0,0);break;
+  case 'go':a.idx=+v;S.eset=null;S.adj=null;saveActive();render();irExecucao();break;
   case 'step':{const [o,k]=alvo(b.dataset.k);if(!o)break;o[k]=Math.max(0,Math.round(((+o[k]||0)+ +b.dataset.d)*10)/10);if(k==='s')o.s=Math.min(10,Math.max(1,o.s));if(k==='sec'||k==='hold')o[k]=Math.max(5,o[k]);saveActive();render();break}
   case 'eset':{const r=a.ex[curEx().id],x=r?.sets[+v];if(!x)break;S.adj=null;S.eset={ex:curEx().id,i:+v,d:x.sec!=null?{sec:x.sec}:{kg:x.kg,reps:x.reps}};render();break}
   case 'esetno':S.eset=null;render();break;
