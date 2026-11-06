@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.05-3';
+const APP_VERSAO='2026.11.06-1';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -413,7 +413,7 @@ function viewTreinos(){const aid=S.me,f=ativaDe(aid),ws=weekStart(Date.now()),ss
 /* Aba Progresso do aluno: gráficos e histórico juntos. */
 function viewProgresso(){const sub=['historico','musculos','medidas'].includes(S.psub)?S.psub:'graficos';
  const st=`<div class="subtabs">${[['graficos','Gráficos'],['musculos','Músculos'],['medidas','Medidas'],['historico','Histórico']].map(([k,l])=>`<button data-act="psub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
- const body=sub==='historico'?historico(S.me):sub==='musculos'?musculos(S.me):sub==='medidas'?medidas(S.me):evolucao(S.me);
+ const body=sub==='historico'?historico(S.me):sub==='musculos'?musculos(S.me):sub==='medidas'?medidas(S.me):relBox(S.me)+evolucao(S.me);
  return pageHero('Meu progresso',`${sessDe(S.me).length} treinos registrados`,`${st}${body}`)}
 function itemRow(s){if(s.corrida)return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted">${esc(s.treinoNome||'Corrida')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${fmtDist(s.corrida.dist)}</b><div class="small muted">${fmtRitmo(s.corrida.ritmo)}</div></div></div>`;const n=Object.values(s.ex||{}).reduce((a,r)=>a+r.sets.length,0);return `<div class="item">${letter(s.letra,'s')}<div class="grow"><b>${dataLonga(s.inicio)}</b><div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.treinoNome||'')}</div></div><div style="text-align:right"><b class="num" style="font-size:20px">${Math.round(s.dur/60)} min</b><div class="small muted">${n} séries</div></div></div>`}
 
@@ -440,6 +440,7 @@ function viewFicha(){
  const C=S.conf,isM=!!f.modelo,at=!isM&&ativaDe(f.alunoId)?.id===f.id,dono=isM?'Modelo do Personal':'Ficha de '+esc(perfil(f.alunoId)?.nome||'aluno');
  const iaNota=f.origem==='ia'?`<div class="note warn">Ficha sugerida por IA${f.autor?' e criada por '+esc(f.autor):''}. Revise com um Personal ou profissional de saúde, principalmente se houver lesões ou dores.</div>`:'';
  const head=`<section class="panel">
+  <div class="row"><span class="grow"></span>${pdfBtnFicha(f)}</div>
   <div class="field"><label class="lbl" for="f-nome">Nome da ficha</label><input id="f-nome" class="txt" data-ch="fnome" value="${esc(f.nome)}"></div>
   ${isM&&!f.global&&f.personalId===S.me?`<label class="check"><input type="checkbox" data-ch="falunos" ${f.alunos?'checked':''}>Disponível para meus alunos</label><div class="small muted">${f.alunos?'Seus alunos podem usar este modelo como base em “Nova ficha”.':'Privado: só você vê este modelo. Marque para que seus alunos possam usá-lo como base.'}</div>`:''}
   ${isM&&f.global?'<div class="small muted">Modelo da plataforma, disponível para todos os usuários.</div>':''}
@@ -662,7 +663,7 @@ function viewAluno(){
  const st=`<div class="subtabs">${[['fichas','Fichas'],['evolucao','Evolução'],['historico','Histórico'],['cadastro','Cadastro']].map(([k,l])=>`<button data-act="sub" data-v="${k}" class="${sub===k?'on':''}">${l}</button>`).join('')}</div>`;
  let body='';
  if(sub==='fichas')body=fichasList(p.id);
- else if(sub==='evolucao'){const es=['musculos','medidas'].includes(S.esub)?S.esub:'graficos';body=`<div class="seg">${[['graficos','Gráficos'],['musculos','Músculos'],['medidas','Medidas']].map(([k,l])=>`<button data-act="esub" data-v="${k}" class="${es===k?'on':''}">${l}</button>`).join('')}</div>${es==='musculos'?musculos(p.id):es==='medidas'?medidas(p.id):evolucao(p.id)}`}
+ else if(sub==='evolucao'){const es=['musculos','medidas'].includes(S.esub)?S.esub:'graficos';body=`<div class="seg">${[['graficos','Gráficos'],['musculos','Músculos'],['medidas','Medidas']].map(([k,l])=>`<button data-act="esub" data-v="${k}" class="${es===k?'on':''}">${l}</button>`).join('')}</div>${es==='musculos'?musculos(p.id):es==='medidas'?medidas(p.id):relBox(p.id)+evolucao(p.id)}`}
  else if(sub==='historico')body=historico(p.id);
  else{const C=S.conf;body=`<section class="panel">
   <div class="field"><label class="lbl" for="cad-nome">Nome</label><input id="cad-nome" class="txt" data-ch="pnome" value="${esc(p.nome)}"></div>

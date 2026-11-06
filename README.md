@@ -149,6 +149,12 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 - **Moderação:** o criador apaga recados, zera o placar ou remove membros, gera novo código e pode passar a comunidade a outro membro ou encerrá-la. Denúncias de recados vão para *Gestão*.
 - **Privacidade e limites:** ninguém lê os treinos de outra pessoa; cada app publica só o próprio placar, e as regras do Firestore recusam números implausíveis (mais de 14 treinos na semana, 62 no mês, 300 km na semana, 1.000 km no mês, ou acima de 2 treinos/50 km por dia nos desafios).
 
+### Exportar em PDF (nov/2026)
+
+- **Ficha de treino:** botão *Exportar PDF* no topo da ficha (aluno ou Personal). Traz aluno, Personal e CREF, ciclo, meta, vencimento e um quadro por treino com séries, repetições, carga, descanso, técnica e observações.
+- **Relatório de progressão:** em *Progresso → Gráficos* (aluno) ou *Aluno → Evolução* (Personal), *Exportar relatório em PDF*. Período de 4, 8 ou 12 semanas, ciclo da ficha ativa ou todo o histórico. Inclui indicadores, frequência semanal com a meta, evolução de carga por exercício (com 1RM estimado e mini gráficos), corrida e lista de sessões. **Registros de dor** só entram se a opção for marcada (desmarcada por padrão).
+- O PDF é gerado no próprio celular (jsPDF, em `js/vendor`), sem custo, e abre o menu de compartilhar (WhatsApp, e-mail, salvar). No computador, é baixado.
+
 ### Termos e privacidade
 
 `termos.html` e `privacidade.html` são minutas. Preencha os campos entre colchetes (responsável, CNPJ/CPF, endereço, e-mail, prazo de retenção) antes de divulgar o app. No primeiro acesso, cada usuário precisa aceitar os dois documentos.
@@ -167,6 +173,7 @@ Abra o endereço no Chrome, toque em **⋮** e depois em **Instalar app** (ou **
 | `js/app.js` | Lógica do app |
 | `js/config.js` | Configuração do Firebase |
 | `js/exercicios.js` | Fotos e instruções dos exercícios (Free Exercise DB) |
+| `js/pdf.js` | Exportação da ficha e do relatório de progressão em PDF |
 | `js/comunidades.js` | Comunidades: mural, aprovação, ranking e desafios |
 | `js/recursos.js` | Técnicas avançadas, aniversário, vencimento, avisos ao Personal e condução do treino |
 | `ROADMAP.md` | Atualizações futuras combinadas |
