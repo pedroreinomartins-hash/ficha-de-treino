@@ -45,9 +45,12 @@ async function pdfFicha(fid){const f=ficha(fid);if(!f)return;const jsPDF=await p
   if(t.dia){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...PDF_COR.muted);doc.text(pdfTxt(t.dia),doc.internal.pageSize.getWidth()-14,y,{align:'right'})}
   y+=5;
   if(t.tipo==='corrida'){y=pdfTabela(doc,y,['#','Bloco'],(t.blocos||[]).map((b,j)=>[j+1,pdfTxt(blocoTxt(b))]),{columnStyles:{0:{cellWidth:9,halign:'center'}}});return}
-  const G=grupos(t.ex);
-  const body=t.ex.map((e,j)=>{const tc=TECNICAS[e.tec];const obs=[G[j]&&G[j][0]===j?`${tecNome(e.tec)} com ${G[j].slice(1).map(k=>t.ex[k].n).join(' e ')}`:G[j]?`${tecNome(t.ex[G[j][0]].tec)} (continuação)`:tc?tc.n:'',e.nota||'',e.knee?'Atenção ao joelho':'',e.reab?'Reabilitação':''].filter(Boolean).join(' · ');
-   return [j+1,pdfTxt(e.n),pdfTxt(`${e.s} × ${e.r}`),e.tipo==='t'?pdfTxt('tempo '+fmtSec(e.hold||30)):(+e.kg>0?fmtKg(e.kg):''),mmss(e.desc||0),pdfTxt(obs)]});
+  const G=grupos(t.ex),soft=ac.map(c=>Math.round(c+(255-c)*.86));const body=[];
+  t.ex.forEach((e,j)=>{const g=G[j],GI=g?grpInfo(t.ex,g):null,tc=TECNICAS[e.tec];
+   if(g&&g[0]===j)body.push([{content:pdfTxt(`${GI.nome} · ${g.length} exercícios em sequência · ${grpResumo(GI)}`),colSpan:6,styles:{fillColor:soft,textColor:ac,fontStyle:'bold',fontSize:8}}]);
+   const obs=[tc&&!tc.grupo?tc.n:'',e.nota||'',e.knee?'Escala de dor':'',e.reab?'Reabilitação':''].filter(Boolean).join(' · ');
+   const desc=g?(g[g.length-1]===j?mmss(GI.dr)+' (rodada)':GI.dx?mmss(GI.dx):'sem'):mmss(e.desc||0);
+   body.push([g?{content:j+1,styles:{fillColor:soft}}:j+1,pdfTxt(e.n),pdfTxt(g?`${GI.r} × ${e.r}`:`${e.s} × ${e.r}`),e.tipo==='t'?pdfTxt('tempo '+fmtSec(e.hold||30)):(+e.kg>0?fmtKg(e.kg):''),desc,pdfTxt(obs)])});
   y=pdfTabela(doc,y,['#','Exercício','Séries × reps','Carga (kg)','Descanso','Técnica e observações'],body,{columnStyles:{0:{cellWidth:8,halign:'center',textColor:PDF_COR.muted},1:{cellWidth:52,fontStyle:'bold'},2:{cellWidth:24,halign:'center'},3:{cellWidth:20,halign:'center'},4:{cellWidth:18,halign:'center'}}})});
  y=pdfQuebra(doc,y,20);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_COR.muted);
  doc.text(doc.splitTextToSize('Os treinos se alternam em sequência, sem depender do dia da semana. Carga é a referência atual; ajuste conforme a orientação do seu Personal. Em caso de dor ou desconforto, interrompa o exercício e procure orientação profissional.',doc.internal.pageSize.getWidth()-28),14,y);

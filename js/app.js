@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.06-1';
+const APP_VERSAO='2026.11.06-2';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -249,22 +249,23 @@ function temEscalaDor(s){if(s.corrida)return s.corrida.dor!=null;const rs=Object
  const t=ficha(s.fichaId)?.treinos?.find(x=>x.id===s.treinoId);return !!t&&t.ex.some(e=>e.knee&&s.ex?.[e.id])}
 function draft(ex){const a=S.active;if(!a.draft[ex.id]){const l=lastFor(ex.n,a.alunoId);const ls=l?.r.sets[l.r.sets.length-1];a.draft[ex.id]=ex.tipo==='t'?{sec:ls?.sec??ex.hold??30}:{kg:(+ex.kg>0?+ex.kg:ls?.kg)??0,reps:ls?.reps??firstNum(ex.r)}}return a.draft[ex.id]}
 function startSession(fid,tid,aid){unlockAudio();const f=ficha(fid),ti=f.treinos.findIndex(t=>t.id===tid),t=f.treinos[ti];if(!t||!temConteudo(t))return;const cond=aid&&aid!==S.me;{const d=andDe(cond?aid:S.me);if(d&&d.controle!==S.me&&t.tipo!=='corrida')return toast(cond?'Este aluno já está com um treino em andamento. Use “Assumir e continuar”.':'Seu treino está em andamento em outro celular. Use “Retomar no meu celular”.')}if(t.tipo==='corrida'){if(cond)return toast('A condução pelo Personal vale para treinos de musculação.');return startCorrida(f,t,ti)}const now=Date.now();
- S.active={id:uid('s'),alunoId:cond?aid:S.me,fichaId:f.id,treinoId:t.id,letra:LETRAS[ti],treinoNome:t.nome,exList:clone(t.ex),inicio:now,idx:0,ex:{},draft:{},skip:{},restEnd:null,holdEnd:null};
+ S.active={id:uid('s'),alunoId:cond?aid:S.me,fichaId:f.id,treinoId:t.id,letra:LETRAS[ti],treinoNome:t.nome,exList:clone(t.ex),inicio:now,idx:0,ex:{},draft:{},skip:{},restEnd:null,holdEnd:null};migraGrupos(S.active.exList);
  if(cond){S.active.cond=S.me;S.active.condNome=ME()?.nome||'Personal';S.active.alunoNome=perfil(aid)?.nome||'aluno'}
  S.view='treino';S.confirmEnd=false;saveActive();render();keepAwake();mediaMusc()}
 const isDone=ex=>(S.active.ex[ex.id]?.sets.length||0)>=ex.s||!!S.active.skip?.[ex.id];
 const isSkip=ex=>!!S.active.skip?.[ex.id]&&!(S.active.ex[ex.id]?.sets.length>=ex.s);
 function nextIdx(from){const L=S.active.exList;for(let k=1;k<=L.length;k++){const j=(from+k)%L.length;if(!isDone(L[j]))return j}return from}
-function startRest(ex){const a=S.active;if(a.exList.every(isDone)){a.restEnd=null;return}const sec=+ex.desc||0;if(!sec){a.restEnd=null;return}a.restEnd=Date.now()+sec*1000;a.restTotal=sec;a.restEx=ex.id;a.restAlerted=false}
+function startRest(ex,seg){const a=S.active;if(a.exList.every(isDone)){a.restEnd=null;return}const sec=seg!=null?+seg:(+ex.desc||0);if(!sec){a.restEnd=null;return}a.restEnd=Date.now()+sec*1000;a.restTotal=sec;a.restEx=ex.id;a.restAlerted=false}
 function logSet(vals){const a=S.active,ex=curEx();rec(ex).sets.push({...vals,t:Date.now()});
  const tc=TECNICAS[ex.tec];
  if(tc?.sub&&vals.sec==null){a.restEnd=null;a.sub={ex:ex.id,tipo:tc.sub};a.subd=tc.sub==='drop'?{kg:Math.round((+vals.kg||0)*.75*2)/2,reps:+vals.reps||0}:{kg:+vals.kg||0,reps:Math.max(1,Math.round((+vals.reps||0)/3))};
   if(tc.pausa){a.miniEnd=Date.now()+tc.pausa*1000;a.miniTot=tc.pausa;a.miniAlert=false}saveActive();render();return}
  avancar(ex)}
-/* Depois da série: descanso e próximo exercício (bi-set/tri-set seguem sem descanso dentro do grupo). */
+/* Depois da série: descanso e próximo exercício. Nos exercícios combinados, passa ao seguinte do grupo
+   (com o descanso entre exercícios, se houver) e, no fim da rodada, aplica o descanso entre rodadas. */
 function avancar(ex){const a=S.active;a.sub=null;a.miniEnd=null;const g=grupos(a.exList)[a.idx];
- if(g){const pend=g.filter(j=>!isDone(a.exList[j]));const seg=pend.find(j=>j>a.idx);
-  if(seg!=null){a.restEnd=null;a.idx=seg}else{startRest(ex);a.idx=pend.length?pend[0]:nextIdx(a.idx)}saveActive();render();return}
+ if(g){const G=grpInfo(a.exList,g);const pend=g.filter(j=>!isDone(a.exList[j]));const seg=pend.find(j=>j>a.idx);
+  if(seg!=null){if(G.dx>0)startRest(ex,G.dx);else a.restEnd=null;a.idx=seg}else{startRest(ex,G.dr);a.idx=pend.length?pend[0]:nextIdx(a.idx)}saveActive();render();return}
  startRest(ex);if(isDone(ex))a.idx=nextIdx(a.idx);saveActive();render()}
 function subLog(){const a=S.active,ex=curEx(),r=rec(ex),ls=r.sets[r.sets.length-1];if(!ls)return;(ls.x=ls.x||[]).push({kg:+a.subd.kg||0,reps:+a.subd.reps||0});
  const tc=TECNICAS[ex.tec];if(tc?.sub==='drop')a.subd.kg=Math.round((+a.subd.kg||0)*.75*2)/2;if(tc?.pausa){a.miniEnd=Date.now()+tc.pausa*1000;a.miniTot=tc.pausa;a.miniAlert=false}saveActive();render()}
@@ -437,6 +438,7 @@ function fichasList(owner){
 /* ================= Editor de ficha ================= */
 function viewFicha(){
  const f=ficha(S.edit);if(!f){S.view=S.back;return render0()}
+ if(canEdit(f)&&f.treinos.some(t=>(t.ex||[]).some(e=>TECNICAS[e.tec]?.grupo)))saveF(f);
  const C=S.conf,isM=!!f.modelo,at=!isM&&ativaDe(f.alunoId)?.id===f.id,dono=isM?'Modelo do Personal':'Ficha de '+esc(perfil(f.alunoId)?.nome||'aluno');
  const iaNota=f.origem==='ia'?`<div class="note warn">Ficha sugerida por IA${f.autor?' e criada por '+esc(f.autor):''}. Revise com um Personal ou profissional de saúde, principalmente se houver lesões ou dores.</div>`:'';
  const head=`<section class="panel">
@@ -454,12 +456,13 @@ function viewFicha(){
  </section>`;
  const treinos=f.treinos.map((t,ti)=>{if(t.tipo==='corrida')return corridaEditor(f,t,ti);
   const gr=grupos(t.ex);
-  const rows=t.ex.map((e,ei)=>{
+  const rowsArr=t.ex.map((e,ei)=>{
    if(S.form&&S.form.t===t.id&&S.form.e===e.id)return exForm();
    const k='dele:'+t.id+':'+e.id;
    if(C===k)return `<div class="miniconf"><span class="grow">Excluir “${esc(e.n)}”?</span><button class="btn sm danger" data-act="dele" data-t="${t.id}" data-v="${e.id}">Excluir</button><button class="btn sm ghost" data-act="conf" data-v="">Não</button></div>`;
    const mi=media(e.n),gi=gr[ei];
-   return `<div class="exrow ${gi?'ingrp':''}">${mi?`<img class="thumb" src="${IMG_BASE+mi.img[0]}" alt="" loading="lazy">`:`<span class="n">${ei+1}</span>`}<div class="grow"><b>${esc(e.n)}</b><div class="meta">${e.s} × ${esc(e.r)} · ${TIPOS[e.tipo]}${e.tipo==='t'?' '+fmtSec(e.hold||30):''} · descanso ${mmss(e.desc||0)}${e.knee?' · escala de dor':''}</div>${gi&&gi[0]===ei?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))} com ${gi.slice(1).map(j=>esc(t.ex[j].n)).join(' e ')}</div>`:e.tec&&!TECNICAS[e.tec]?.grupo?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))}</div>`:''}${e.tipo!=='t'?`<label class="kgline">Carga <input class="kgin" data-ch="exkg" data-t="${t.id}" data-e="${e.id}" inputmode="decimal" value="${+e.kg>0?fmtKg(e.kg):''}" placeholder="—" aria-label="Carga de ${esc(e.n)} em kg"> kg</label>`:''}</div><div class="icons"><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="-1" ${ei===0?'disabled':''} aria-label="Subir">↑</button><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="1" ${ei===t.ex.length-1?'disabled':''} aria-label="Descer">↓</button><button class="ib" data-act="edite" data-t="${t.id}" data-v="${e.id}" aria-label="Editar">✎</button><button class="ib del" data-act="conf" data-v="${k}" aria-label="Excluir">✕</button></div></div>`}).join('');
+   return `<div class="exrow ${gi?'ingrp':''}">${mi?`<img class="thumb" src="${IMG_BASE+mi.img[0]}" alt="" loading="lazy">`:`<span class="n">${ei+1}</span>`}<div class="grow"><b>${esc(e.n)}</b><div class="meta">${gi?esc(e.r)+' por rodada':e.s+' × '+esc(e.r)} · ${TIPOS[e.tipo]}${e.tipo==='t'?' '+fmtSec(e.hold||30):''}${gi?'':' · descanso '+mmss(e.desc||0)}${e.knee?' · escala de dor':''}</div>${e.tec&&!TECNICAS[e.tec]?.grupo?`<div class="meta" style="color:var(--accent);font-weight:600">${esc(tecNome(e.tec))}</div>`:''}${e.tipo!=='t'?`<label class="kgline">Carga <input class="kgin" data-ch="exkg" data-t="${t.id}" data-e="${e.id}" inputmode="decimal" value="${+e.kg>0?fmtKg(e.kg):''}" placeholder="—" aria-label="Carga de ${esc(e.n)} em kg"> kg</label>`:''}</div><div class="icons"><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="-1" ${ei===0?'disabled':''} aria-label="Subir">↑</button><button class="ib" data-act="mv" data-t="${t.id}" data-v="${e.id}" data-d="1" ${ei===t.ex.length-1?'disabled':''} aria-label="Descer">↓</button><button class="ib" data-act="edite" data-t="${t.id}" data-v="${e.id}" aria-label="Editar">✎</button><button class="ib del" data-act="conf" data-v="${k}" aria-label="Excluir">✕</button></div></div>`});
+  const rows=montaGrupos(t,rowsArr,gr);
   const adding=S.form&&S.form.t===t.id&&!S.form.e;const kt='delt:'+t.id;
   return `<section class="panel">
    <div class="row">${letter(LETRAS[ti])}<div class="grow field"><label class="lbl" for="tn-${t.id}">Treino ${LETRAS[ti]}</label><input id="tn-${t.id}" class="txt" data-ch="tnome" data-t="${t.id}" value="${esc(t.nome)}"></div></div>
@@ -489,7 +492,7 @@ function exForm(){const d=S.form.d;return `<div class="form" id="exform">
 
 /* ================= Sessão: tela ================= */
 function viewTreino(){
- const a=S.active,ex=curEx(),r=a.ex[ex.id]||{sets:[],dor:null},d=draft(ex),L=a.exList,all=L.every(isDone),G=grupos(L),g=G[a.idx],tc=TECNICAS[ex.tec],sk=isSkip(ex);
+ const a=S.active,ex=curEx(),r=a.ex[ex.id]||{sets:[],dor:null},d=draft(ex),L=a.exList,all=L.every(isDone),G=grupos(L),g=G[a.idx],GI=g?grpInfo(L,g):null,tc=TECNICAS[ex.tec],sk=isSkip(ex);
  const strip=L.map((e,i)=>{const n=a.ex[e.id]?.sets.length||0,pk=isSkip(e);return `<button class="pill ${i===a.idx?'cur':''} ${pk?'skip':n>=e.s?'done':n?'part':''} ${G[i]?'grp':''} ${G[i]&&G[i][0]===i?'g0':''}" data-act="go" data-v="${i}" aria-label="${esc(e.n)}${pk?' (pulado)':''}">${pk?'–':n>=e.s?'✓':i+1}</button>`}).join('');
  const l=lastFor(ex.n,a.alunoId);
  const lastTxt=l?`Última vez (${ddmm(l.s.inicio)}): ${l.r.sets.map(x=>fmtSet(x,1)).join(' · ')}`:'Primeira vez neste exercício';
@@ -503,12 +506,12 @@ function viewTreino(){
  else if(a.holdEnd)action=`<button class="btn big danger" data-act="holdstop">Parar · <span id="holdClock">${mmss((a.holdEnd-Date.now())/1000)}</span></button>`;
  else if(sk)action=`<div class="note warn">Exercício pulado neste treino.</div><button class="btn ghost" data-act="unskip" data-v="${ex.id}">Desfazer: fazer este exercício</button>${all?`<button class="btn primary big" data-act="endask">Finalizar e salvar treino</button>`:`<button class="btn primary big" data-act="go" data-v="${nextIdx(a.idx)}">Próximo exercício</button>`}`;
  else if(r.sets.length>=ex.s)action=all?`<button class="btn primary big" data-act="endask">Finalizar e salvar treino</button>`:`<button class="btn primary big" data-act="go" data-v="${nextIdx(a.idx)}">Próximo exercício</button><button class="btn ghost" data-act="extra">Fazer série extra</button>`;
- else action=(ex.tipo==='t'?`<button class="btn primary big" data-act="holdgo">Iniciar cronômetro · ${fmtSec(d.sec)}</button>`:`<button class="btn primary big" data-act="set">Concluir série ${r.sets.length+1} de ${ex.s}${g&&g.indexOf(a.idx)<g.length-1?' · sem descanso':''}</button>`)+`<button class="btn sm ghost" data-act="skip" data-v="${ex.id}">Pular este exercício</button>`;
+ else action=(ex.tipo==='t'?`<button class="btn primary big" data-act="holdgo">Iniciar cronômetro · ${fmtSec(d.sec)}</button>`:`<button class="btn primary big" data-act="set">${g?`Concluir rodada ${r.sets.length+1} de ${ex.s}`:`Concluir série ${r.sets.length+1} de ${ex.s}`}${g?(g.filter(j=>j>a.idx&&!isDone(L[j])).length?(GI.dx?' · descanso '+mmss(GI.dx):' · sem descanso'):' · fim da rodada'):''}</button>`)+`<button class="btn sm ghost" data-act="skip" data-v="${ex.id}">Pular este exercício</button>`;
  const nd=L.filter(e=>(a.ex[e.id]?.sets.length||0)>=e.s).length,np=L.filter(isSkip).length;
  const confirm=S.confirmEnd?`<div class="confirm"><b>Encerrar o treino agora?</b><span class="small muted">${nd} de ${L.length} exercícios concluídos${np?` · ${np} pulado${np>1?'s':''}`:''}.</span><button class="btn primary" data-act="end" data-v="1">Salvar e encerrar</button><div class="nav2"><button class="btn ghost" data-act="endcancel">Continuar treinando</button><button class="btn danger" data-act="end" data-v="0">Descartar treino</button></div></div>`:'';
- const gtag=g?`<span class="tag tec">${esc(tecNome(L[g[0]].tec))} ${g.indexOf(a.idx)+1}/${g.length}</span>`:'';
+ const gtag=g?`<span class="tag tec">${esc(GI.nome)} · rodada ${Math.min(GI.r,Math.min(...g.map(j=>a.ex[L[j].id]?.sets.length||0))+1)} de ${GI.r} · exercício ${g.indexOf(a.idx)+1} de ${g.length}</span>`:'';
  const tectag=tc&&!tc.grupo?`<span class="tag tec">${esc(tc.n)}</span>`:'';
- const tecInfo=g?`<div class="tecinfo"><b>${esc(tecNome(L[g[0]].tec))}:</b> ${g.map(j=>esc(L[j].n)).join(' + ')}. Sem descanso entre eles; o descanso vem depois do último.</div>`:tc?`<div class="tecinfo"><b>${esc(tc.n)}:</b> ${esc(tc.d)}</div>`:'';
+ const tecInfo=g?`<div class="tecinfo"><b>${esc(GI.nome)}:</b> ${g.map(j=>esc(L[j].n)).join(' + ')}. ${GI.dx?'Descanso de '+mmss(GI.dx)+' entre os exercícios':'Sem descanso entre os exercícios'}; ${mmss(GI.dr)} de descanso ao fim de cada rodada.</div>`:tc?`<div class="tecinfo"><b>${esc(tc.n)}:</b> ${esc(tc.d)}</div>`:'';
  const cond=a.cond?`<div class="note info">Você está conduzindo o treino de <b>${esc(a.alunoNome)}</b>. Os registros vão para o histórico do aluno.</div>`:'';
  return `<main class="wrap" style="padding-bottom:${a.restEnd?'380px':'40px'}">
  <header class="shead">${letter(a.letra)}<div class="grow"><div class="clock" id="elapsed">${hms((Date.now()-a.inicio)/1000)}</div><div class="small muted" id="wakeTag">${wake?'Tela ativa':'Tela pode apagar'}</div></div><button class="btn sm ghost" data-act="tab" data-v="inicio">Menu</button><button class="btn sm danger" data-act="endask">Encerrar</button></header>
@@ -516,7 +519,7 @@ function viewTreino(){
  <section class="panel" id="exCard">
   <div class="row" style="align-items:flex-start"><div class="grow"><div class="eyebrow">Exercício ${a.idx+1} de ${L.length}${ex.reab?' · reabilitação':''}</div><h2 class="exname">${esc(ex.n)}</h2></div><button class="btn sm ghost" data-act="adjopen">✎ Ajustar</button></div>
   ${S.adj&&S.adj.ex===ex.id?adjForm(ex):''}
-  <div class="presc"><span class="tag">${ex.s} × ${esc(ex.r)}</span>${ex.tipo!=='t'&&+ex.kg>0?`<span class="tag kg">Carga ${fmtKg(ex.kg)} kg</span>`:''}<span class="tag">Descanso ${mmss(ex.desc||0)}</span>${gtag}${tectag}${ex.knee?'<span class="tag knee">Escala de dor</span>':''}${ex.nota?`<span class="tag ${ex.reab?'reab':''}">${esc(ex.nota)}</span>`:''}</div>
+  <div class="presc"><span class="tag">${ex.s} × ${esc(ex.r)}</span>${ex.tipo!=='t'&&+ex.kg>0?`<span class="tag kg">Carga ${fmtKg(ex.kg)} kg</span>`:''}${g?'':`<span class="tag">Descanso ${mmss(ex.desc||0)}</span>`}${gtag}${tectag}${ex.knee?'<span class="tag knee">Escala de dor</span>':''}${ex.nota?`<span class="tag ${ex.reab?'reab':''}">${esc(ex.nota)}</span>`:''}</div>
   ${tecInfo}
   ${demo(ex)}
   <div class="small muted">${lastTxt}</div>
@@ -539,7 +542,7 @@ function setEditor(ex,x){const D=S.eset.d;const ins=x.sec!=null?`<div class="ste
 function adjForm(ex){const D=S.adj.d;return `<div class="form" style="gap:10px"><div class="eyebrow">Ajustar exercício</div>
  <div class="steppers">${stepper('as','Séries',D.s,1)}${ex.tipo==='t'?stepper('ahold','Tempo (min:seg)',fmtMS(D.hold),15):stepper('akg','Carga ref. (kg)',fmtKg(D.kg),2.5)}</div>
  <div class="grid2"><div class="field"><label class="lbl" for="adj-r">${ex.tipo==='t'?'Duração (texto)':'Repetições'}</label><input id="adj-r" class="txt" data-adj="r" value="${esc(D.r)}"></div><div class="field"><label class="lbl" for="adj-desc">Descanso (min:seg)</label><input id="adj-desc" class="txt" data-adj="desc" inputmode="decimal" value="${esc(D.desc)}"></div></div>
- <div class="field"><label class="lbl" for="adj-tec">Técnica</label><select id="adj-tec" data-adj="tec"><option value="">Série tradicional</option>${Object.entries(TECNICAS).map(([k,t])=>`<option value="${k}" ${D.tec===k?'selected':''}>${t.n}</option>`).join('')}</select></div>
+ <div class="field"><label class="lbl" for="adj-tec">Técnica</label><select id="adj-tec" data-adj="tec"><option value="">Série tradicional</option>${Object.entries(TECNICAS).filter(([k,t])=>!t.grupo||D.tec===k).map(([k,t])=>`<option value="${k}" ${D.tec===k?'selected':''}>${t.n}</option>`).join('')}</select></div>
  ${S.adj.podeFicha?`<label class="check"><input type="checkbox" data-adj="ficha" ${D.ficha?'checked':''}>Salvar também na ficha (próximos treinos)</label>`:'<div class="small muted">A alteração vale só para este treino.</div>'}
  <div class="nav2"><button class="btn ghost" data-act="adjno">Cancelar</button><button class="btn primary" data-act="adjok">Aplicar</button></div></div>`}
 /* Drop-set, rest-pause e cluster: blocos extras dentro da mesma série. */
@@ -724,7 +727,7 @@ function copyFicha(base,owner,nome){const nf={...clone(base),id:uid('f'),nome,ar
  nf.treinos=nf.treinos.map(t=>({...t,id:uid('t'),ex:t.ex.map(x=>({...x,id:uid('e')}))}));return nf}
 function openEditor(id){S.edit=id;S.back=S.view==='aluno'?'aluno':S.view==='modelos'?'modelos':S.view==='gestao'?'gestao':S.view==='ficha'?S.back:'fichas';S.view='ficha';S.conf=null;S.form=null;S.bib=null;render();window.scrollTo(0,0)}
 function curFicha(){return ficha(S.edit)}
-function saveF(f){put('fichas',f)}
+function saveF(f){(f.treinos||[]).forEach(t=>t.ex&&migraGrupos(t.ex));put('fichas',f)}
 
 document.addEventListener('input',e=>{const el=e.target;
  if(el.dataset.f&&S.form)S.form.d[el.dataset.f]=el.type==='checkbox'?el.checked:el.value;
@@ -809,7 +812,8 @@ document.addEventListener('click',e=>{
    const t=f.treinos.find(x=>x.id===S.form.t);const ex={id:S.form.e||uid('e'),n,s,r:d.r.trim()||'—',tipo:d.tipo,desc:parseMS(d.desc)};
    if(d.tipo==='t')ex.hold=Math.max(5,parseMS(d.hold)||30);if(d.knee)ex.knee=1;if(d.reab)ex.reab=1;if(d.nota.trim())ex.nota=d.nota.trim();if((d.video||'').trim())ex.video=d.video.trim();{const k=parseFloat(String(d.kg||'').replace(',','.'));if(d.tipo!=='t'&&k>0)ex.kg=Math.round(k*10)/10}if(d.tec&&TECNICAS[d.tec])ex.tec=d.tec;
    const i=t.ex.findIndex(x=>x.id===ex.id);if(i>=0)t.ex[i]=ex;else t.ex.push(ex);S.form=null;saveF(f);render();break}
-  case 'mv':{const {t,i}=findEx(f,b.dataset.t,v);const j=i+ +b.dataset.d;if(j<0||j>=t.ex.length)break;[t.ex[i],t.ex[j]]=[t.ex[j],t.ex[i]];saveF(f);render();break}
+  case 'mv':{const {t,i}=findEx(f,b.dataset.t,v);const j=i+ +b.dataset.d;if(j<0||j>=t.ex.length)break;const pos=k=>({liga:t.ex[k].liga,circ:t.ex[k].circ});const pi=pos(i),pj=pos(j);[t.ex[i],t.ex[j]]=[t.ex[j],t.ex[i]];
+   /* a combinação pertence à posição: mover reordena dentro do grupo sem desfazê-lo */[[i,pi],[j,pj]].forEach(([k,p])=>{delete t.ex[k].liga;delete t.ex[k].circ;if(p.liga)t.ex[k].liga=true;if(p.circ)t.ex[k].circ=p.circ});saveF(f);render();break}
   case 'dele':{const t=f.treinos.find(x=>x.id===b.dataset.t);t.ex=t.ex.filter(x=>x.id!==v);S.conf=null;saveF(f);render();break}
   /* cadastro (Personal) */
   case 'rpin':{const p=perfil(S.sel);fbAuth.sendPasswordResetEmail(p.email).then(()=>{S.cadMsg='Link de redefinição enviado para '+p.email+'.';render()}).catch(e=>{S.cadMsg=authMsg(e);render()});break}

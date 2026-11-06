@@ -7,6 +7,7 @@ const TECNICAS={
  drop:{n:'Drop-set',d:'Ao terminar a série, reduza a carga em 20% a 30% e continue sem descanso até a falha. Pode repetir o drop 1 ou 2 vezes.',sub:'drop'},
  restpause:{n:'Rest-pause',d:'Perto da falha, pause 10 a 20 s e faça mais algumas repetições com a mesma carga.',sub:'pausa',pausa:15},
  cluster:{n:'Cluster',d:'A série é dividida em blocos curtos, com pausas de 10 a 20 s entre eles, mantendo a carga.',sub:'pausa',pausa:15},
+ /* bi-set e tri-set agora são feitos com "Combinar com o próximo"; mantidos para fichas antigas */
  bi:{n:'Bi-set',d:'Este exercício e o seguinte são feitos em sequência, sem descanso entre eles. O descanso vem depois do segundo.',grupo:2},
  tri:{n:'Tri-set',d:'Este exercício e os dois seguintes são feitos em sequência, sem descanso entre eles. O descanso vem depois do terceiro.',grupo:3},
  piramideC:{n:'Pirâmide crescente',d:'Aumente a carga e reduza as repetições a cada série.'},
@@ -16,8 +17,22 @@ const TECNICAS={
 };
 const tecNome=k=>TECNICAS[k]?.n||'';
 /* Índices do treino que formam bi-set/tri-set: {índice: [índices do grupo]} */
-function grupos(L){const g={};for(let i=0;i<L.length;i++){const k=TECNICAS[L[i].tec]?.grupo;if(!k||g[i])continue;const ids=[];for(let j=i;j<Math.min(L.length,i+k);j++)ids.push(j);if(ids.length>1)ids.forEach(j=>g[j]=ids)}return g}
-function tecSelect(d){return `<div class="field"><label class="lbl" for="fx-tec">Técnica (opcional)</label><select id="fx-tec" data-f="tec"><option value="">Série tradicional</option>${Object.entries(TECNICAS).map(([k,t])=>`<option value="${k}" ${d.tec===k?'selected':''}>${t.n}</option>`).join('')}</select>${d.tec&&TECNICAS[d.tec]?`<div class="small muted">${esc(TECNICAS[d.tec].d)}</div>`:''}</div>`}
+/* Exercícios combinados: e.liga=true liga o exercício ao seguinte. A configuração do grupo fica no primeiro: e.circ={r (rodadas), dx (descanso entre exercícios, s), dr (descanso entre rodadas, s)}.
+   Fichas antigas usavam a técnica "bi"/"tri" no primeiro exercício; continuam funcionando. */
+function grupos(L){const g={};let i=0;while(i<L.length){let j=i;while(j<L.length-1&&L[j].liga)j++;
+  if(j>i){const ids=[];for(let k=i;k<=j;k++)ids.push(k);ids.forEach(k=>g[k]=ids);i=j+1;continue}
+  const k=TECNICAS[L[i].tec]?.grupo;if(k){const ids=[];for(let m=i;m<Math.min(L.length,i+k);m++)ids.push(m);if(ids.length>1){ids.forEach(m=>g[m]=ids);i+=ids.length;continue}}
+  i++}return g}
+const grpNome=(n,dx)=>dx>0?'Circuito':n===2?'Bi-set':n===3?'Tri-set':'Série gigante';
+function grpInfo(L,ids){const f=L[ids[0]],l=L[ids[ids.length-1]],c=f.circ||{};const r=Math.max(1,Math.min(10,+c.r||+f.s||3)),dx=Math.max(0,+c.dx||0),dr=c.dr!=null?Math.max(0,+c.dr):(+l.desc||60);
+ return {r,dx,dr,n:ids.length,nome:grpNome(ids.length,dx)}}
+const grpResumo=G=>`${G.r} rodada${G.r>1?'s':''} · ${G.dx?'descanso de '+mmss(G.dx)+' entre exercícios':'sem descanso entre exercícios'} · ${mmss(G.dr)} entre rodadas`;
+/* Converte bi-set/tri-set antigos para a marca "combinado" e alinha as séries ao número de rodadas. */
+function migraGrupos(L){let mud=false;for(let i=0;i<L.length;i++){const k=TECNICAS[L[i].tec]?.grupo;if(!k)continue;const fim=Math.min(L.length,i+k)-1;
+  if(fim>i){for(let m=i;m<fim;m++)if(!L[m].liga){L[m].liga=true;mud=true}}delete L[i].tec;mud=true}
+ const G=grupos(L);Object.values(G).forEach(ids=>{const r=grpInfo(L,ids).r;ids.forEach(j=>{if(+L[j].s!==r){L[j].s=r;mud=true}})});
+ L.forEach((e,i)=>{if(e.liga&&i===L.length-1){delete e.liga;mud=true}if(e.circ&&!G[i]){delete e.circ;mud=true}});return mud}
+function tecSelect(d){return `<div class="field"><label class="lbl" for="fx-tec">Técnica (opcional)</label><select id="fx-tec" data-f="tec"><option value="">Série tradicional</option>${Object.entries(TECNICAS).filter(([k,t])=>!t.grupo||d.tec===k).map(([k,t])=>`<option value="${k}" ${d.tec===k?'selected':''}>${t.n}</option>`).join('')}</select>${d.tec&&TECNICAS[d.tec]?`<div class="small muted">${esc(TECNICAS[d.tec].d)}</div>`:''}</div>`}
 /* Série com drops/blocos: 60 kg × 10 + 45×6 */
 function fmtSet(x,curto){if(x.sec!=null)return fmtSec(x.sec);const base=curto?`${fmtKg(x.kg)}×${x.reps}`:`${fmtKg(x.kg)} kg × ${x.reps}`;return base+(x.x?.length?' + '+x.x.map(y=>`${fmtKg(y.kg)}×${y.reps}`).join(' + '):'')}
 
@@ -82,4 +97,29 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'conduzir':startSession(b.dataset.f,v,b.dataset.a);window.scrollTo(0,0);break;
   case 'usarciclo':{const f=curFicha();if(f){f.vence=fimDoCiclo(f);saveF(f);render()}break}
   case 'semvence':{const f=curFicha();if(f){delete f.vence;saveF(f);render()}break}
+ }});
+
+/* ================= Editor: exercícios combinados ================= */
+function montaGrupos(t,arr,gr){let h='';const n=t.ex.length;
+ t.ex.forEach((e,i)=>{const g=gr[i];
+  if(g&&g[0]===i){const G=grpInfo(t.ex,g),F=S.gform&&S.gform.t===t.id&&S.gform.e===e.id?S.gform:null;
+   h+=`<div class="grpbox"><div class="grphead"><span class="grptag">${esc(G.nome)}</span><div class="grow meta">${esc(grpResumo(G))}</div><button class="btn sm ghost" data-act="gform" data-t="${t.id}" data-v="${e.id}">Ajustar</button></div>${F?grpForm(F,G):''}`}
+  h+=arr[i];const fim=g&&g[g.length-1]===i;if(fim)h+='</div>';
+  if(i<n-1&&!(S.form&&S.form.t===t.id&&(S.form.e===e.id||S.form.e===t.ex[i+1].id)))h+=`<button class="elo ${e.liga?'on':''}" data-act="liga" data-t="${t.id}" data-v="${e.id}" aria-pressed="${!!e.liga}">${e.liga?'🔗 Combinado com o próximo · separar':'+ Combinar com o próximo'}</button>`});
+ return h}
+function grpForm(F,G){return `<div class="form" style="gap:10px"><div class="eyebrow">${esc(G.nome)} · ${G.n} exercícios</div>
+ <div class="grid3" style="grid-template-columns:1fr 1fr 1fr"><div class="field"><label class="lbl" for="gf-r">Rodadas</label><input id="gf-r" class="txt" data-gf="r" inputmode="numeric" value="${esc(F.r)}"></div>
+ <div class="field"><label class="lbl" for="gf-dx">Descanso entre exercícios</label><input id="gf-dx" class="txt" data-gf="dx" inputmode="decimal" value="${esc(F.dx)}"></div>
+ <div class="field"><label class="lbl" for="gf-dr">Descanso entre rodadas</label><input id="gf-dr" class="txt" data-gf="dr" inputmode="decimal" value="${esc(F.dr)}"></div></div>
+ <div class="small muted">Tempos em minutos e segundos (0:15 = 15 s; 1:30 = 1 min e 30 s). Com descanso 0 entre exercícios, o grupo é bi-set, tri-set ou série gigante; com descanso, vira circuito. Cada exercício faz uma série por rodada.</div>
+ <div class="nav2"><button class="btn ghost" data-act="gfno">Cancelar</button><button class="btn primary" data-act="gfok">Salvar</button></div></div>`}
+document.addEventListener('input',e=>{const el=e.target;if(el.dataset.gf&&S.gform)S.gform[el.dataset.gf]=el.value});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const v=b.dataset.v;
+ const alvoT=()=>{const f=curFicha();const t=f?.treinos.find(x=>x.id===(b.dataset.t||S.gform?.t));return [f,t]};
+ switch(b.dataset.act){
+  case 'liga':{const [f,t]=alvoT();const e2=t?.ex.find(x=>x.id===v);if(!e2)break;const ia=!e2.liga;if(ia)e2.liga=true;else delete e2.liga;saveF(f);render();toast(ia?'Exercícios combinados: feitos em sequência, uma série de cada por rodada.':'Combinação desfeita.');break}
+  case 'gform':{const [,t]=alvoT();const i=t?.ex.findIndex(x=>x.id===v);if(i==null||i<0)break;const g=grupos(t.ex)[i];if(!g)break;const G=grpInfo(t.ex,g);S.gform=S.gform?.e===v?null:{t:t.id,e:v,r:String(G.r),dx:fmtMS(G.dx),dr:fmtMS(G.dr)};render();break}
+  case 'gfno':S.gform=null;render();break;
+  case 'gfok':{const [f,t]=alvoT();const F=S.gform,e2=t?.ex.find(x=>x.id===F.e);if(!e2)break;const r=Math.round(+F.r);if(!(r>=1&&r<=10)){toast('Rodadas: de 1 a 10.');break}
+   e2.circ={r,dx:Math.min(600,parseMS(F.dx)||0),dr:Math.min(900,parseMS(F.dr)||0)};S.gform=null;saveF(f);render();toast('Grupo atualizado.');break}
  }});

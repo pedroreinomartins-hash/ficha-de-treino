@@ -37,3 +37,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **05/11/2026 · Biblioteca e progresso (comparativo MuscleWiki):** biblioteca de exercícios com mapa corporal, filtros e passo a passo em português; músculos trabalhados na semana; 1RM estimado e cargas sugeridas; medidas corporais (aluno e Personal). Sem custo adicional e sem mudança nas regras do Firestore.
 - **05/11/2026 · Alertas e dor:** botão *Ciente* nos alertas do Personal; escala de dor para qualquer exercício marcado na ficha (sem menção a joelho); pergunta das 24 h só quando o treino teve escala de dor; alertas indicam o exercício.
 - **06/11/2026 · PDF:** exportação da ficha de treino e do relatório de progressão (dor opcional, desmarcada por padrão), gerados no celular.
+- **06/11/2026 · Exercícios combinados:** combinar com o próximo (bi-set, tri-set, série gigante) e circuito com rodadas, descanso entre exercícios e entre rodadas; também no PDF.

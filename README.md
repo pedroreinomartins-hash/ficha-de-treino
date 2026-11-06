@@ -149,6 +149,13 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 - **Moderação:** o criador apaga recados, zera o placar ou remove membros, gera novo código e pode passar a comunidade a outro membro ou encerrá-la. Denúncias de recados vão para *Gestão*.
 - **Privacidade e limites:** ninguém lê os treinos de outra pessoa; cada app publica só o próprio placar, e as regras do Firestore recusam números implausíveis (mais de 14 treinos na semana, 62 no mês, 300 km na semana, 1.000 km no mês, ou acima de 2 treinos/50 km por dia nos desafios).
 
+### Exercícios combinados (nov/2026)
+
+- No editor da ficha, o botão **+ Combinar com o próximo** entre dois exercícios junta-os num grupo, mostrado numa moldura: 2 exercícios = **bi-set**, 3 = **tri-set**, 4 ou mais = **série gigante**; com descanso entre exercícios, vira **circuito**.
+- **Ajustar** no grupo define as **rodadas** (cada exercício faz uma série por rodada), o **descanso entre exercícios** e o **descanso entre rodadas**.
+- Na execução, a tela mostra "rodada 2 de 3 · exercício 1 de 2", passa sozinha ao próximo exercício do grupo e aplica o descanso certo. Mover um exercício com ↑/↓ reordena dentro do grupo sem desfazê-lo.
+- Fichas antigas com a técnica bi-set/tri-set são convertidas automaticamente ao abrir.
+
 ### Exportar em PDF (nov/2026)
 
 - **Ficha de treino:** botão *Exportar PDF* no topo da ficha (aluno ou Personal). Traz aluno, Personal e CREF, ciclo, meta, vencimento e um quadro por treino com séries, repetições, carga, descanso, técnica e observações.
