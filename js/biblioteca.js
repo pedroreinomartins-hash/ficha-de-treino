@@ -175,6 +175,43 @@ function musculos(aid){const fa=ativaDe(aid),sel=S.evoF==='ativa'?(fa?.id||'toda
  ${!V.ns?`<div class="empty">Nenhum treino de musculação ${fsel?'desta ficha ':''}${off===0?'nesta semana ainda':'nesta semana'}.</div>`:`${faltam.length?`<div class="note warn">Sem estímulo ${off===0?'até agora':'nesta semana'}: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
  <section class="panel" style="gap:8px"><div class="eyebrow">Séries por músculo${ref?' · feito / previsto':''}</div>${barras(T,ref,lista)}
  <div class="small muted">${ref?'O traço vertical marca o previsto na ficha para a semana. ':''}Músculo secundário conta meia série. Corrida e aquecimento não entram na conta.${V.semClass.length?` Sem classificação (nome livre): ${esc(V.semClass.join(', '))}.`:''}</div></section>`}`}
+
+/* ================= 1RM estimado (fórmula de Epley) ================= */
+const e1rm=(kg,reps)=>kg>0&&reps>=1&&reps<=12?kg*(1+reps/30):0;
+function melhor1rm(sets){let b=null;(sets||[]).forEach(x=>{const v=e1rm(+x.kg||0,+x.reps||0);if(v&&(!b||v>b.v))b={v,kg:+x.kg,reps:+x.reps}});return b}
+function cargaPara(rm,reps){return Math.round(rm/(1+reps/30)*2)/2}
+function bloco1rm(best){if(!best)return '';const rm=best.v;
+ return `<div class="rmbox"><div class="row" style="align-items:baseline"><div class="grow"><div class="eyebrow">1RM estimado</div><b class="num" style="font-size:30px;color:var(--t1)">${fmtKg(Math.round(rm*2)/2)} kg</b></div><div class="small muted" style="text-align:right">melhor série<br><b style="color:var(--ink)">${fmtKg(best.kg)} kg × ${best.reps}</b> em ${ddmm(best.t)}</div></div>
+ <div class="eyebrow">Cargas sugeridas</div><div class="kpis">${[[4,'força'],[8,''],[12,'']].map(([r,l])=>`<div class="kpi"><b>${fmtKg(cargaPara(rm,r))}</b><span>kg · ~${r} rep${l?' · '+l:''}</span></div>`).join('')}</div>
+ <div class="small muted">Estimativa pela fórmula de Epley, só com séries de até 12 repetições. É uma referência: ajuste com o seu Personal.</div></div>`}
+
+/* ================= Medidas corporais (ficam no perfil do aluno) ================= */
+const MED=[['peso','Peso','kg',20,400],['gord','Gordura corporal','%',2,70],['peito','Peito','cm',40,250],['bracoD','Braço direito','cm',10,80],['bracoE','Braço esquerdo','cm',10,80],['cintura','Cintura','cm',30,250],['abd','Abdômen','cm',30,250],['quadril','Quadril','cm',40,250],['coxaD','Coxa direita','cm',20,120],['coxaE','Coxa esquerda','cm',20,120],['pant','Panturrilha','cm',15,80]];
+const medK=k=>MED.find(x=>x[0]===k);
+const medsDe=p=>(p?.medidas||[]).slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')||(a.em||0)-(b.em||0));
+const ddmmISO=d=>{const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]:''};
+const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+function medVar(L,k){const c=L.filter(r=>r[k]!=null);if(!c.length)return null;const u=c[c.length-1],a=c[c.length-2];return {v:u[k],d:a?u[k]-a[k]:null,desde:a?ddmmISO(a.d):''}}
+const fmtDif=(d,un)=>d==null?'':(d>0?'+':d<0?'−':'')+fmtKg(Math.abs(Math.round(d*10)/10))+(un==='%'?' p.p.':' '+un);
+function medForm(){const M=S.med;return `<section class="form" id="medform"><h3>Registrar medidas</h3>
+ <div class="field"><label class="lbl" for="md-data">Data</label><input id="md-data" class="txt" type="date" data-md="data" value="${esc(M.d.data)}" max="${hojeISO()}"></div>
+ <div class="grid2">${MED.map(([k,l,u])=>`<div class="field"><label class="lbl" for="md-${k}">${l} (${u})</label><input id="md-${k}" class="txt" data-md="${k}" inputmode="decimal" value="${esc(M.d[k]||'')}" placeholder="—"></div>`).join('')}</div>
+ <div class="small muted">Preencha só o que mediu. Use sempre o mesmo horário e as mesmas condições para comparar.</div>
+ ${M.err?`<div class="note bad">${esc(M.err)}</div>`:''}
+ <div class="nav2"><button class="btn ghost" data-act="medno">Cancelar</button><button class="btn primary" data-act="medok">Salvar</button></div></section>`}
+function medidas(aid){const p=perfil(aid),L=medsDe(p),abre=S.med&&S.med.aid===aid;
+ const btn=abre?medForm():`<button class="btn primary" data-act="medopen" data-v="${aid}">+ Registrar medidas</button>`;
+ const nota=`<div class="small muted" style="text-align:center">${aid===S.me?'Compartilhadas com o seu Personal, quando houver vínculo.':'Registradas pelo aluno ou por você.'}</div>`;
+ if(!L.length)return `${btn}<div class="empty">Nenhuma medida registrada. Registre peso, % de gordura e circunferências para acompanhar a evolução.</div>${nota}`;
+ const kp=['peso','gord','cintura'].map(k=>{const r=medVar(L,k),[,l,u]=medK(k);return `<div class="kpi"><b>${r?fmtKg(r.v):'—'}</b><span>${k==='gord'?'% gordura':l.toLowerCase()+' ('+u+')'}</span>${r&&r.d!=null?`<div class="small muted" style="font-weight:600">${fmtDif(r.d,u)}</div>`:''}</div>`}).join('');
+ const comDados=MED.filter(([k])=>L.some(r=>r[k]!=null));const ck=comDados.some(x=>x[0]===S.medK)?S.medK:comDados[0][0];const [,cl,cu]=medK(ck);
+ const pts=L.filter(r=>r[ck]!=null).map(r=>({l:ddmmISO(r.d),v:r[ck]}));
+ const graf=`<section class="panel"><div class="row"><div class="eyebrow grow">Evolução</div><select id="medSel" aria-label="Medida" style="width:auto;max-width:60%">${comDados.map(([k,l])=>`<option value="${k}" ${k===ck?'selected':''}>${l}</option>`).join('')}</select></div>${line(pts,{unit:cu==='%'?'%':' '+cu})}</section>`;
+ const circ=MED.slice(2).map(([k,l,u])=>{const r=medVar(L,k);return r?`<div class="item"><span class="grow">${l}</span><b class="num" style="font-size:19px">${fmtKg(r.v)} ${u}</b><span class="small muted" style="width:76px;text-align:right">${r.d==null?'':r.d===0?'—':fmtDif(r.d,u)}</span></div>`:''}).join('');
+ const hist=L.slice().reverse().map(r=>{const vals=MED.filter(([k])=>r[k]!=null).map(([k,l,u])=>`${l.split(' ')[0]==='Gordura'?'gordura':l.toLowerCase()} ${fmtKg(r[k])}${u==='%'?'%':' '+u}`).join(' · ');
+  const cf=S.medDel===r.id;return `<div class="item" style="align-items:flex-start"><div class="grow"><b>${ddmmISO(r.d)}/${String(r.d).slice(0,4)}</b>${r.por?`<span class="small muted"> · por ${esc(r.por)}</span>`:''}<div class="small muted">${esc(vals)}</div>${cf?`<div class="row" style="gap:6px;margin-top:6px"><button class="btn sm danger" data-act="meddel" data-v="${r.id}">Excluir registro</button><button class="btn sm ghost" data-act="medconf" data-v="">Manter</button></div>`:''}</div>${cf?'':`<button class="ib del" data-act="medconf" data-v="${r.id}" aria-label="Excluir registro de ${ddmmISO(r.d)}">✕</button>`}</div>`}).join('');
+ return `<div class="kpis">${kp}</div>${graf}${circ?`<section class="panel" style="gap:0"><div class="eyebrow" style="padding-bottom:6px">Circunferências · último registro</div>${circ}</section>`:''}${btn}
+ <details class="panel"><summary><b>Registros (${L.length})</b></summary><div class="list">${hist}</div></details>${nota}`}
 async function medSalvar(){const M=S.med,p=perfil(M.aid);if(!p)return;M.err='';
  if(!dataLocal(M.d.data)){M.err='Informe a data.';render();return}
  const rec={id:uid('m'),d:M.d.data,em:Date.now()};
