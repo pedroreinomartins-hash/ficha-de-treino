@@ -53,7 +53,7 @@ const TPL_TEND={id:'f-tendinite',nome:'Full Body ABC – tendinite (anterior)',s
 ]};
 const LEGACY={};TPL_TEND.treinos.forEach(t=>t.ex.forEach(e=>LEGACY[e.id]=e.n));
 const LIB=['Abdominal infra','Abdominal na polia','Abdominal supra','Agachamento livre','Agachamento no Smith','Agachamento sumô','Bicicleta ergométrica (aquecimento)','Cadeira abdutora','Cadeira adutora','Cadeira extensora','Cadeira flexora','Crossover','Crucifixo com halteres','Crucifixo na polia','Crucifixo inverso','Desenvolvimento com barra','Desenvolvimento com halteres (sentado)','Desenvolvimento na máquina','Elevação frontal','Elevação lateral','Elevação lateral na polia','Elevação pélvica','Elíptico','Encolhimento com halteres','Esteira (caminhada)','Face pull','Flexora sentada','Glúteo na polia','Hip thrust','Leg press 45°','Leg press horizontal','Levantamento terra','Mesa flexora','Panturrilha em pé','Panturrilha no leg press','Panturrilha sentada','Peck deck','Prancha','Prancha lateral','Pull-through na polia','Pulldown com braços estendidos','Puxada alta pela frente','Puxada com triângulo','Remada articulada','Remada baixa','Remada cavalinho','Remada curvada','Remada unilateral','Rosca alternada','Rosca concentrada','Rosca direta','Rosca martelo','Rosca Scott','Spanish squat (com faixa)','Stiff com halteres','Supino declinado','Supino inclinado com barra','Supino inclinado com halteres','Supino máquina','Supino reto com barra','Supino reto com halteres','Tríceps corda','Tríceps francês','Tríceps na polia','Tríceps testa','Mergulho no banco'];
-const APP_VERSAO='2026.11.06-2';
+const APP_VERSAO='2026.11.07-1';
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 /* ================= Utilidades ================= */
@@ -598,12 +598,13 @@ function line(pts,{unit='',min=null,max=null,bands=false,fmt=null,extra=null,ext
  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${bd}${ticks}${area}${ex2}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}<text x="${Math.min(x(pts.length-1),W-R-4)}" y="${y(lp.v)-10}" text-anchor="end" style="fill:var(--ink);font-weight:600;font-size:12px">${fmt?F(lp.v):fmtKg(lp.v)}${unit}</text>${lab}</svg></div>`}
 
 /* ================= Evolução e histórico (por aluno) ================= */
+function fichaSel(aid){const fa=ativaDe(aid);return `<select id="evoSel" aria-label="Ficha">${fa?`<option value="ativa" ${S.evoF==='ativa'?'selected':''}>Ficha ativa: ${esc(fa.nome)}</option>`:''}<option value="todas" ${S.evoF==='todas'||(!fa&&S.evoF==='ativa')?'selected':''}>Todas as fichas</option>${fichasDe(aid).filter(f=>f.id!==fa?.id).map(f=>`<option value="${f.id}" ${S.evoF===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>`}
 function evolucao(aid){
  const fa=ativaDe(aid);const sel=S.evoF==='ativa'?(fa?.id||'todas'):S.evoF;
  const fsel=sel==='todas'?null:ficha(sel);
  const ss=sessDe(aid).filter(s=>!fsel||s.fichaId===fsel.id);
  const meta=metaDe(fsel||fa);
- const filtro=`<select id="evoSel" aria-label="Ficha">${fa?`<option value="ativa" ${S.evoF==='ativa'?'selected':''}>Ficha ativa: ${esc(fa.nome)}</option>`:''}<option value="todas" ${S.evoF==='todas'||(!fa&&S.evoF==='ativa')?'selected':''}>Todas as fichas</option>${fichasDe(aid).filter(f=>f.id!==fa?.id).map(f=>`<option value="${f.id}" ${S.evoF===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>`;
+ const filtro=fichaSel(aid);
  if(!ss.length)return `${filtro}<div class="empty">Os gráficos de frequência, duração, carga e dor aparecem depois do primeiro treino salvo${fsel?' nesta ficha':''}.</div>`;
  const ws=weekStart(Date.now());
  const weeks=[...Array(8)].map((_,i)=>{const w=ws-(7-i)*7*DAY;return {l:ddmm(w),v:weekCount(w,aid,fsel?.id)}});
@@ -782,7 +783,7 @@ document.addEventListener('click',e=>{
   /* navegação */
   case 'tab':if(v==='comunidade'){S.com=null;S.cf=null}go(v);if(v==='treino')keepAwake();break;
   case 'aluno':S.sel=v;S.sub='fichas';S.evoF='ativa';go('aluno');break;
-  case 'psub':S.psub=v;S.confirmDel=null;S.med=null;S.medDel=null;S.evoF='ativa';if(S.view!=='progresso'){go('progresso')}else render();break;
+  case 'psub':S.psub=v;S.confirmDel=null;S.med=null;S.medDel=null;if(S.view!=='progresso'){go('progresso')}else render();break;
   case 'sub':S.sub=v;S.med=null;S.medDel=null;S.imp=null;S.cadMsg='';S.conf=null;S.newF=null;S.confirmDel=null;S.evoF='ativa';render();break;
   case 'start':startSession(b.dataset.f,v);window.scrollTo(0,0);break;
   /* feedback */

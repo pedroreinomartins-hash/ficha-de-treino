@@ -144,57 +144,37 @@ function bibAbrirForm(nome,tipo){const t=S.bib.t;S.bib=null;tipo=tipo||'c';
  render();setTimeout(()=>{$('#exform')?.scrollIntoView({block:'center'});if(!nome)$('#fx-n')?.focus()},0)}
 
 /* ================= Músculos trabalhados na semana ================= */
-function volumeSemana(aid,ws){const tot={},semClass=new Set();let ns=0,series=0;
- sessDe(aid).filter(s=>!s.corrida&&s.inicio>=ws&&s.inicio<ws+7*DAY).forEach(s=>{ns++;Object.values(s.ex||{}).forEach(r=>{const n=(r.sets||[]).length;if(!n)return;const e=classifica(r.n);
+function volumeSemana(aid,ws,fid){const tot={},semClass=new Set();let ns=0,series=0;
+ sessDe(aid).filter(s=>!s.corrida&&s.inicio>=ws&&s.inicio<ws+7*DAY&&(!fid||s.fichaId===fid)).forEach(s=>{ns++;Object.values(s.ex||{}).forEach(r=>{const n=(r.sets||[]).length;if(!n)return;const e=classifica(r.n);
   if(!e){semClass.add(r.n);return}if(!e.p)return;series+=n;tot[e.p]=(tot[e.p]||0)+n;e.s.forEach(m=>tot[m]=(tot[m]||0)+n/2)})});
  return {tot,ns,series,semClass:[...semClass]}}
-function musculos(aid){const off=Math.min(0,S.mwk||0),ws=weekStart(Date.now())+off*7*DAY,V=volumeSemana(aid,ws),T=V.tot;
- const cor=m=>HEAT[nivelSeries(T[m]||0)];
- const nav=`<div class="row" style="gap:8px"><button class="ib" data-act="mwk" data-v="-1" aria-label="Semana anterior">‹</button><div class="grow" style="text-align:center"><b class="num" style="font-size:20px">${off===0?'Esta semana':'Semana de '+ddmm(ws)+' a '+ddmm(ws+6*DAY)}</b><div class="small muted">${V.ns} treino${V.ns===1?'':'s'} · ${V.series} séries</div></div><button class="ib" data-act="mwk" data-v="1" ${off>=0?'disabled':''} aria-label="Próxima semana">›</button></div>`;
+/* Volume previsto por semana: os treinos se alternam em sequência, então cada um entra, em média, meta ÷ nº de treinos vezes por semana. */
+function volumePrevisto(f){const tot={},semClass=new Set();if(!f)return {tot,series:0,vezes:0,semClass:[]};const n=f.treinos.length||1,vezes=metaDe(f)/n;let series=0;
+ f.treinos.forEach(t=>{if(t.tipo==='corrida')return;(t.ex||[]).forEach(x=>{const ns=(+x.s||0)*vezes;if(!ns)return;const e=classifica(x.n);if(!e){semClass.add(x.n);return}if(!e.p)return;series+=ns;tot[e.p]=(tot[e.p]||0)+ns;e.s.forEach(m=>tot[m]=(tot[m]||0)+ns/2)})});
+ return {tot,series,vezes,semClass:[...semClass]}}
+const r05=v=>fmtKg(Math.round(v*2)/2);
+function musculos(aid){const fa=ativaDe(aid),sel=S.evoF==='ativa'?(fa?.id||'todas'):S.evoF,fsel=sel==='todas'?null:ficha(sel);
+ const modo=S.mmode==='previsto'?'previsto':'feito',fp=fsel||fa;const P=volumePrevisto(fp);
+ const seg=`<div class="seg" style="grid-template-columns:1fr 1fr">${[['feito','Feito na semana'],['previsto','Previsto na ficha']].map(([k,l])=>`<button data-act="mmode" data-v="${k}" class="${modo===k?'on':''}">${l}</button>`).join('')}</div>`;
+ const topo=`${fichaSel(aid)}${seg}`;
+ const barras=(T,ref,lista)=>lista.map(m=>{const v=T[m]||0,p=ref?.[m]||0;return `<div class="mbar"><span>${MUSC[m]}</span><span class="tr"><span style="width:${Math.max(v?3:0,Math.min(100,v/20*100))}%;background:var(--accent);opacity:${v?Math.max(.45,HEAT[nivelSeries(v)][1]):0}"></span>${ref&&p?`<i class="prev" style="left:${Math.min(100,p/20*100)}%" title="previsto"></i>`:''}</span><b class="num">${r05(v)}${ref?`<small class="muted"> / ${r05(p)}</small>`:''}</b></div>`}).join('');
+ if(modo==='previsto'){
+  if(!fp)return `${topo}<div class="empty">Escolha uma ficha para ver o volume previsto.</div>`;
+  const T=P.tot,cor=m=>HEAT[nivelSeries(T[m]||0)];const faltam=MUSC_PRINC.filter(m=>!T[m]);
+  const lista=Object.keys(MUSC).filter(m=>T[m]>0).sort((a,b)=>T[b]-T[a]).concat(faltam);
+  return `${topo}<section class="panel" style="gap:8px"><div style="text-align:center"><b class="num" style="font-size:20px">${esc(fp.nome)}</b><div class="small muted">${sel==='todas'?'Ficha ativa · ':''}${metaDe(fp)} treino${metaDe(fp)>1?'s':''} por semana · cerca de ${r05(P.series)} séries por semana</div></div>${corpo(cor,{rotulo:'Mapa de músculos previstos na ficha por semana'})}${legendaHeat()}</section>
+  ${!P.series?`<div class="empty">A ficha ainda não tem exercícios de musculação.</div>`:`${faltam.length?`<div class="note warn">A ficha não prevê estímulo para: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
+  <section class="panel" style="gap:8px"><div class="eyebrow">Séries previstas por músculo, por semana</div>${barras(T,null,lista)}
+  <div class="small muted">Estimativa: os ${fp.treinos.length} treinos se alternam em sequência e a meta é de ${metaDe(fp)} por semana, então cada treino entra cerca de ${fmtKg(Math.round(P.vezes*10)/10)} vez${P.vezes>=2?'es':''} por semana. Músculo secundário conta meia série.${P.semClass.length?` Sem classificação (nome livre): ${esc(P.semClass.join(', '))}.`:''}</div></section>`}`}
+ const off=Math.min(0,S.mwk||0),ws=weekStart(Date.now())+off*7*DAY,V=volumeSemana(aid,ws,fsel?.id),T=V.tot;
+ const cor=m=>HEAT[nivelSeries(T[m]||0)];const ref=fsel?P.tot:null;
+ const nav=`<div class="row" style="gap:8px"><button class="ib" data-act="mwk" data-v="-1" aria-label="Semana anterior">‹</button><div class="grow" style="text-align:center"><b class="num" style="font-size:20px">${off===0?'Esta semana':'Semana de '+ddmm(ws)+' a '+ddmm(ws+6*DAY)}</b><div class="small muted">${V.ns} treino${V.ns===1?'':'s'} · ${V.series} séries${fsel?' · '+esc(fsel.nome):''}</div></div><button class="ib" data-act="mwk" data-v="1" ${off>=0?'disabled':''} aria-label="Próxima semana">›</button></div>`;
  const faltam=V.ns?MUSC_PRINC.filter(m=>!T[m]):[];
- const lista=Object.keys(MUSC).filter(m=>T[m]>0).sort((a,b)=>T[b]-T[a]).concat(faltam);
- const linhas=lista.map(m=>{const v=T[m]||0;return `<div class="mbar"><span>${MUSC[m]}</span><span class="tr"><span style="width:${Math.max(v?3:0,Math.min(100,v/20*100))}%;background:var(--accent);opacity:${v?Math.max(.45,HEAT[nivelSeries(v)][1]):0}"></span></span><b class="num">${fmtKg(Math.round(v*2)/2)}</b></div>`}).join('');
- return `<section class="panel" style="gap:8px">${nav}${corpo(cor,{rotulo:'Mapa de músculos trabalhados na semana'})}${legendaHeat()}</section>
- ${!V.ns?`<div class="empty">Nenhum treino de musculação ${off===0?'nesta semana ainda':'nesta semana'}.</div>`:`${faltam.length?`<div class="note warn">Sem estímulo ${off===0?'até agora':'nesta semana'}: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
- <section class="panel" style="gap:8px"><div class="eyebrow">Séries por músculo</div>${linhas}
- <div class="small muted">Músculo secundário conta meia série. Corrida e aquecimento não entram na conta.${V.semClass.length?` Sem classificação (nome livre): ${esc(V.semClass.join(', '))}.`:''}</div></section>`}`}
-
-/* ================= 1RM estimado (fórmula de Epley) ================= */
-const e1rm=(kg,reps)=>kg>0&&reps>=1&&reps<=12?kg*(1+reps/30):0;
-function melhor1rm(sets){let b=null;(sets||[]).forEach(x=>{const v=e1rm(+x.kg||0,+x.reps||0);if(v&&(!b||v>b.v))b={v,kg:+x.kg,reps:+x.reps}});return b}
-function cargaPara(rm,reps){return Math.round(rm/(1+reps/30)*2)/2}
-function bloco1rm(best){if(!best)return '';const rm=best.v;
- return `<div class="rmbox"><div class="row" style="align-items:baseline"><div class="grow"><div class="eyebrow">1RM estimado</div><b class="num" style="font-size:30px;color:var(--t1)">${fmtKg(Math.round(rm*2)/2)} kg</b></div><div class="small muted" style="text-align:right">melhor série<br><b style="color:var(--ink)">${fmtKg(best.kg)} kg × ${best.reps}</b> em ${ddmm(best.t)}</div></div>
- <div class="eyebrow">Cargas sugeridas</div><div class="kpis">${[[4,'força'],[8,''],[12,'']].map(([r,l])=>`<div class="kpi"><b>${fmtKg(cargaPara(rm,r))}</b><span>kg · ~${r} rep${l?' · '+l:''}</span></div>`).join('')}</div>
- <div class="small muted">Estimativa pela fórmula de Epley, só com séries de até 12 repetições. É uma referência: ajuste com o seu Personal.</div></div>`}
-
-/* ================= Medidas corporais (ficam no perfil do aluno) ================= */
-const MED=[['peso','Peso','kg',20,400],['gord','Gordura corporal','%',2,70],['peito','Peito','cm',40,250],['bracoD','Braço direito','cm',10,80],['bracoE','Braço esquerdo','cm',10,80],['cintura','Cintura','cm',30,250],['abd','Abdômen','cm',30,250],['quadril','Quadril','cm',40,250],['coxaD','Coxa direita','cm',20,120],['coxaE','Coxa esquerda','cm',20,120],['pant','Panturrilha','cm',15,80]];
-const medK=k=>MED.find(x=>x[0]===k);
-const medsDe=p=>(p?.medidas||[]).slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')||(a.em||0)-(b.em||0));
-const ddmmISO=d=>{const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]:''};
-const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
-function medVar(L,k){const c=L.filter(r=>r[k]!=null);if(!c.length)return null;const u=c[c.length-1],a=c[c.length-2];return {v:u[k],d:a?u[k]-a[k]:null,desde:a?ddmmISO(a.d):''}}
-const fmtDif=(d,un)=>d==null?'':(d>0?'+':d<0?'−':'')+fmtKg(Math.abs(Math.round(d*10)/10))+(un==='%'?' p.p.':' '+un);
-function medForm(){const M=S.med;return `<section class="form" id="medform"><h3>Registrar medidas</h3>
- <div class="field"><label class="lbl" for="md-data">Data</label><input id="md-data" class="txt" type="date" data-md="data" value="${esc(M.d.data)}" max="${hojeISO()}"></div>
- <div class="grid2">${MED.map(([k,l,u])=>`<div class="field"><label class="lbl" for="md-${k}">${l} (${u})</label><input id="md-${k}" class="txt" data-md="${k}" inputmode="decimal" value="${esc(M.d[k]||'')}" placeholder="—"></div>`).join('')}</div>
- <div class="small muted">Preencha só o que mediu. Use sempre o mesmo horário e as mesmas condições para comparar.</div>
- ${M.err?`<div class="note bad">${esc(M.err)}</div>`:''}
- <div class="nav2"><button class="btn ghost" data-act="medno">Cancelar</button><button class="btn primary" data-act="medok">Salvar</button></div></section>`}
-function medidas(aid){const p=perfil(aid),L=medsDe(p),abre=S.med&&S.med.aid===aid;
- const btn=abre?medForm():`<button class="btn primary" data-act="medopen" data-v="${aid}">+ Registrar medidas</button>`;
- const nota=`<div class="small muted" style="text-align:center">${aid===S.me?'Compartilhadas com o seu Personal, quando houver vínculo.':'Registradas pelo aluno ou por você.'}</div>`;
- if(!L.length)return `${btn}<div class="empty">Nenhuma medida registrada. Registre peso, % de gordura e circunferências para acompanhar a evolução.</div>${nota}`;
- const kp=['peso','gord','cintura'].map(k=>{const r=medVar(L,k),[,l,u]=medK(k);return `<div class="kpi"><b>${r?fmtKg(r.v):'—'}</b><span>${k==='gord'?'% gordura':l.toLowerCase()+' ('+u+')'}</span>${r&&r.d!=null?`<div class="small muted" style="font-weight:600">${fmtDif(r.d,u)}</div>`:''}</div>`}).join('');
- const comDados=MED.filter(([k])=>L.some(r=>r[k]!=null));const ck=comDados.some(x=>x[0]===S.medK)?S.medK:comDados[0][0];const [,cl,cu]=medK(ck);
- const pts=L.filter(r=>r[ck]!=null).map(r=>({l:ddmmISO(r.d),v:r[ck]}));
- const graf=`<section class="panel"><div class="row"><div class="eyebrow grow">Evolução</div><select id="medSel" aria-label="Medida" style="width:auto;max-width:60%">${comDados.map(([k,l])=>`<option value="${k}" ${k===ck?'selected':''}>${l}</option>`).join('')}</select></div>${line(pts,{unit:cu==='%'?'%':' '+cu})}</section>`;
- const circ=MED.slice(2).map(([k,l,u])=>{const r=medVar(L,k);return r?`<div class="item"><span class="grow">${l}</span><b class="num" style="font-size:19px">${fmtKg(r.v)} ${u}</b><span class="small muted" style="width:76px;text-align:right">${r.d==null?'':r.d===0?'—':fmtDif(r.d,u)}</span></div>`:''}).join('');
- const hist=L.slice().reverse().map(r=>{const vals=MED.filter(([k])=>r[k]!=null).map(([k,l,u])=>`${l.split(' ')[0]==='Gordura'?'gordura':l.toLowerCase()} ${fmtKg(r[k])}${u==='%'?'%':' '+u}`).join(' · ');
-  const cf=S.medDel===r.id;return `<div class="item" style="align-items:flex-start"><div class="grow"><b>${ddmmISO(r.d)}/${String(r.d).slice(0,4)}</b>${r.por?`<span class="small muted"> · por ${esc(r.por)}</span>`:''}<div class="small muted">${esc(vals)}</div>${cf?`<div class="row" style="gap:6px;margin-top:6px"><button class="btn sm danger" data-act="meddel" data-v="${r.id}">Excluir registro</button><button class="btn sm ghost" data-act="medconf" data-v="">Manter</button></div>`:''}</div>${cf?'':`<button class="ib del" data-act="medconf" data-v="${r.id}" aria-label="Excluir registro de ${ddmmISO(r.d)}">✕</button>`}</div>`}).join('');
- return `<div class="kpis">${kp}</div>${graf}${circ?`<section class="panel" style="gap:0"><div class="eyebrow" style="padding-bottom:6px">Circunferências · último registro</div>${circ}</section>`:''}${btn}
- <details class="panel"><summary><b>Registros (${L.length})</b></summary><div class="list">${hist}</div></details>${nota}`}
+ const lista=Object.keys(MUSC).filter(m=>T[m]>0||(ref&&ref[m]>0)).sort((a,b)=>(T[b]||0)-(T[a]||0)||(ref?.[b]||0)-(ref?.[a]||0)).concat(faltam.filter(m=>!(ref&&ref[m]>0)));
+ return `${topo}<section class="panel" style="gap:8px">${nav}${corpo(cor,{rotulo:'Mapa de músculos trabalhados na semana'})}${legendaHeat()}</section>
+ ${!V.ns?`<div class="empty">Nenhum treino de musculação ${fsel?'desta ficha ':''}${off===0?'nesta semana ainda':'nesta semana'}.</div>`:`${faltam.length?`<div class="note warn">Sem estímulo ${off===0?'até agora':'nesta semana'}: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
+ <section class="panel" style="gap:8px"><div class="eyebrow">Séries por músculo${ref?' · feito / previsto':''}</div>${barras(T,ref,lista)}
+ <div class="small muted">${ref?'O traço vertical marca o previsto na ficha para a semana. ':''}Músculo secundário conta meia série. Corrida e aquecimento não entram na conta.${V.semClass.length?` Sem classificação (nome livre): ${esc(V.semClass.join(', '))}.`:''}</div></section>`}`}
 async function medSalvar(){const M=S.med,p=perfil(M.aid);if(!p)return;M.err='';
  if(!dataLocal(M.d.data)){M.err='Informe a data.';render();return}
  const rec={id:uid('m'),d:M.d.data,em:Date.now()};
@@ -217,6 +197,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
   case 'bibadd':{const x=BIB[+v];if(x)bibAbrirForm(x.n,x.tipo);break}
   case 'bibman':bibAbrirForm((S.bib.q||'').trim(),'c');break;
   case 'mwk':S.mwk=Math.min(0,(S.mwk||0)+ +v);render();break;
+  case 'mmode':S.mmode=v;render();break;
   case 'esub':S.esub=v;S.med=null;S.medDel=null;render();break;
   case 'medopen':S.med={aid:v,d:{data:hojeISO()},err:''};S.medDel=null;render();setTimeout(()=>$('#medform')?.scrollIntoView({block:'start'}),0);break;
   case 'medno':S.med=null;render();break;

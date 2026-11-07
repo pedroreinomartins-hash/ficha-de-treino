@@ -149,6 +149,12 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 - **Moderação:** o criador apaga recados, zera o placar ou remove membros, gera novo código e pode passar a comunidade a outro membro ou encerrá-la. Denúncias de recados vão para *Gestão*.
 - **Privacidade e limites:** ninguém lê os treinos de outra pessoa; cada app publica só o próprio placar, e as regras do Firestore recusam números implausíveis (mais de 14 treinos na semana, 62 no mês, 300 km na semana, 1.000 km no mês, ou acima de 2 treinos/50 km por dia nos desafios).
 
+### Mapa de músculos por ficha (nov/2026)
+
+- Em *Progresso → Músculos* (e na tela do aluno, para o Personal), o mapa tem o mesmo seletor de fichas dos gráficos (ficha ativa, todas ou uma ficha específica); a escolha vale para os dois.
+- **Feito na semana:** séries realizadas por músculo; com uma ficha escolhida, cada barra mostra também o previsto ("4 / 5") e um traço marcando a meta.
+- **Previsto na ficha:** mapa e séries semanais que a ficha prevê, estimados pela sequência dos treinos e pela meta semanal, com aviso de músculos principais sem estímulo.
+
 ### Exercícios combinados (nov/2026)
 
 - No editor da ficha, o botão **+ Combinar com o próximo** entre dois exercícios junta-os num grupo, mostrado numa moldura: 2 exercícios = **bi-set**, 3 = **tri-set**, 4 ou mais = **série gigante**; com descanso entre exercícios, vira **circuito**.
