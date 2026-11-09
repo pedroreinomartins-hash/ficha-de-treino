@@ -39,3 +39,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **06/11/2026 · PDF:** exportação da ficha de treino e do relatório de progressão (dor opcional, desmarcada por padrão), gerados no celular.
 - **06/11/2026 · Exercícios combinados:** combinar com o próximo (bi-set, tri-set, série gigante) e circuito com rodadas, descanso entre exercícios e entre rodadas; também no PDF.
 - **07/11/2026 · Mapa de músculos:** seletor de fichas compartilhado com os gráficos e modo “Previsto na ficha”, com comparação feito/previsto.
+- **09/11/2026 · Mapa de músculos:** seletor de período (semana, 4 ou 8 semanas, ciclo da ficha, personalizado), com média semanal.

@@ -144,8 +144,8 @@ function bibAbrirForm(nome,tipo){const t=S.bib.t;S.bib=null;tipo=tipo||'c';
  render();setTimeout(()=>{$('#exform')?.scrollIntoView({block:'center'});if(!nome)$('#fx-n')?.focus()},0)}
 
 /* ================= Músculos trabalhados na semana ================= */
-function volumeSemana(aid,ws,fid){const tot={},semClass=new Set();let ns=0,series=0;
- sessDe(aid).filter(s=>!s.corrida&&s.inicio>=ws&&s.inicio<ws+7*DAY&&(!fid||s.fichaId===fid)).forEach(s=>{ns++;Object.values(s.ex||{}).forEach(r=>{const n=(r.sets||[]).length;if(!n)return;const e=classifica(r.n);
+function volumeSemana(aid,ws,fid,fim){fim=fim??ws+7*DAY;const tot={},semClass=new Set();let ns=0,series=0;
+ sessDe(aid).filter(s=>!s.corrida&&s.inicio>=ws&&s.inicio<fim&&(!fid||s.fichaId===fid)).forEach(s=>{ns++;Object.values(s.ex||{}).forEach(r=>{const n=(r.sets||[]).length;if(!n)return;const e=classifica(r.n);
   if(!e){semClass.add(r.n);return}if(!e.p)return;series+=n;tot[e.p]=(tot[e.p]||0)+n;e.s.forEach(m=>tot[m]=(tot[m]||0)+n/2)})});
  return {tot,ns,series,semClass:[...semClass]}}
 /* Volume previsto por semana: os treinos se alternam em sequência, então cada um entra, em média, meta ÷ nº de treinos vezes por semana. */
@@ -155,7 +155,7 @@ function volumePrevisto(f){const tot={},semClass=new Set();if(!f)return {tot,ser
 const r05=v=>fmtKg(Math.round(v*2)/2);
 function musculos(aid){const fa=ativaDe(aid),sel=S.evoF==='ativa'?(fa?.id||'todas'):S.evoF,fsel=sel==='todas'?null:ficha(sel);
  const modo=S.mmode==='previsto'?'previsto':'feito',fp=fsel||fa;const P=volumePrevisto(fp);
- const seg=`<div class="seg" style="grid-template-columns:1fr 1fr">${[['feito','Feito na semana'],['previsto','Previsto na ficha']].map(([k,l])=>`<button data-act="mmode" data-v="${k}" class="${modo===k?'on':''}">${l}</button>`).join('')}</div>`;
+ const seg=`<div class="seg" style="grid-template-columns:1fr 1fr">${[['feito','Realizado'],['previsto','Previsto na ficha']].map(([k,l])=>`<button data-act="mmode" data-v="${k}" class="${modo===k?'on':''}">${l}</button>`).join('')}</div>`;
  const topo=`${fichaSel(aid)}${seg}`;
  const barras=(T,ref,lista)=>lista.map(m=>{const v=T[m]||0,p=ref?.[m]||0;return `<div class="mbar"><span>${MUSC[m]}</span><span class="tr"><span style="width:${Math.max(v?3:0,Math.min(100,v/20*100))}%;background:var(--accent);opacity:${v?Math.max(.45,HEAT[nivelSeries(v)][1]):0}"></span>${ref&&p?`<i class="prev" style="left:${Math.min(100,p/20*100)}%" title="previsto"></i>`:''}</span><b class="num">${r05(v)}${ref?`<small class="muted"> / ${r05(p)}</small>`:''}</b></div>`}).join('');
  if(modo==='previsto'){
@@ -166,14 +166,24 @@ function musculos(aid){const fa=ativaDe(aid),sel=S.evoF==='ativa'?(fa?.id||'toda
   ${!P.series?`<div class="empty">A ficha ainda não tem exercícios de musculação.</div>`:`${faltam.length?`<div class="note warn">A ficha não prevê estímulo para: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
   <section class="panel" style="gap:8px"><div class="eyebrow">Séries previstas por músculo, por semana</div>${barras(T,null,lista)}
   <div class="small muted">Estimativa: os ${fp.treinos.length} treinos se alternam em sequência e a meta é de ${metaDe(fp)} por semana, então cada treino entra cerca de ${fmtKg(Math.round(P.vezes*10)/10)} vez${P.vezes>=2?'es':''} por semana. Músculo secundário conta meia série.${P.semClass.length?` Sem classificação (nome livre): ${esc(P.semClass.join(', '))}.`:''}</div></section>`}`}
- const off=Math.min(0,S.mwk||0),ws=weekStart(Date.now())+off*7*DAY,V=volumeSemana(aid,ws,fsel?.id),T=V.tot;
+ /* Período: uma semana (navegável) ou vários; em vários, mapa e barras mostram a média por semana. */
+ const per=S.mper||'semana',hoje=Date.now(),dt=t=>new Date(t).toLocaleDateString('pt-BR');let off=0,ini,fim,nW=1,titulo;
+ if(per==='semana'){off=Math.min(0,S.mwk||0);ini=weekStart(hoje)+off*7*DAY;fim=ini+7*DAY;titulo=off===0?'Esta semana':'Semana de '+ddmm(ini)+' a '+ddmm(ini+6*DAY)}
+ else if(per==='4'||per==='8'){nW=+per;ini=weekStart(hoje)-(nW-1)*7*DAY;fim=hoje;titulo='Últimas '+nW+' semanas'}
+ else if(per==='ciclo'){const fc=fsel||fa,sc=sessDe(aid).filter(s=>s.fichaId===fc?.id);ini=new Date(sc.length?Math.min(...sc.map(s=>s.inicio)):weekStart(hoje)).setHours(0,0,0,0);fim=hoje;nW=Math.max(1,(fim-ini)/(7*DAY));titulo='Ciclo da ficha'+(fc?' “'+fc.nome+'”':'')}
+ else{const a=dataLocal(S.mini)?.getTime()??new Date(hoje-29*DAY).setHours(0,0,0,0),b=(dataLocal(S.mfim)?.getTime()??new Date(hoje).setHours(0,0,0,0));ini=Math.min(a,b);fim=Math.max(a,b)+DAY;nW=Math.max(1,(fim-ini)/(7*DAY));titulo='Período escolhido'}
+ const V=volumeSemana(aid,ini,fsel?.id,fim),T={};for(const[m,v]of Object.entries(V.tot))T[m]=v/nW;const varias=per!=='semana';
  const cor=m=>HEAT[nivelSeries(T[m]||0)];const ref=fsel?P.tot:null;
- const nav=`<div class="row" style="gap:8px"><button class="ib" data-act="mwk" data-v="-1" aria-label="Semana anterior">‹</button><div class="grow" style="text-align:center"><b class="num" style="font-size:20px">${off===0?'Esta semana':'Semana de '+ddmm(ws)+' a '+ddmm(ws+6*DAY)}</b><div class="small muted">${V.ns} treino${V.ns===1?'':'s'} · ${V.series} séries${fsel?' · '+esc(fsel.nome):''}</div></div><button class="ib" data-act="mwk" data-v="1" ${off>=0?'disabled':''} aria-label="Próxima semana">›</button></div>`;
+ const perSel=`<select id="mperSel" aria-label="Período">${[['semana','Semana'],['4','Últimas 4 semanas'],['8','Últimas 8 semanas'],['ciclo','Ciclo da ficha'],['custom','Personalizado']].map(([k,l])=>`<option value="${k}" ${per===k?'selected':''}>${l}</option>`).join('')}</select>`;
+ const datas=per==='custom'?`<div class="grid2"><div class="field"><label class="lbl" for="m-ini">De</label><input id="m-ini" class="txt" type="date" data-mp="mini" value="${isoData(new Date(ini))}"></div><div class="field"><label class="lbl" for="m-fim">Até</label><input id="m-fim" class="txt" type="date" data-mp="mfim" value="${isoData(new Date(fim-DAY))}"></div></div>`:'';
+ const resumo=varias?`${V.ns} treino${V.ns===1?'':'s'} · ${V.series} séries no total · média de ${fmtKg(Math.round(V.series/nW*10)/10)} por semana`:`${V.ns} treino${V.ns===1?'':'s'} · ${V.series} séries`;
+ const nav=`${perSel}${datas}${varias?`<div style="text-align:center"><b class="num" style="font-size:20px">${esc(titulo)}</b><div class="small muted">${dt(ini)} a ${dt(Math.min(fim,hoje)-1)} · ${fmtKg(Math.round(nW*10)/10)} semana${nW>=2?'s':''}</div><div class="small muted">${resumo}${fsel?' · '+esc(fsel.nome):''}</div></div>`
+  :`<div class="row" style="gap:8px"><button class="ib" data-act="mwk" data-v="-1" aria-label="Semana anterior">‹</button><div class="grow" style="text-align:center"><b class="num" style="font-size:20px">${titulo}</b><div class="small muted">${resumo}${fsel?' · '+esc(fsel.nome):''}</div></div><button class="ib" data-act="mwk" data-v="1" ${off>=0?'disabled':''} aria-label="Próxima semana">›</button></div>`}`;
  const faltam=V.ns?MUSC_PRINC.filter(m=>!T[m]):[];
  const lista=Object.keys(MUSC).filter(m=>T[m]>0||(ref&&ref[m]>0)).sort((a,b)=>(T[b]||0)-(T[a]||0)||(ref?.[b]||0)-(ref?.[a]||0)).concat(faltam.filter(m=>!(ref&&ref[m]>0)));
- return `${topo}<section class="panel" style="gap:8px">${nav}${corpo(cor,{rotulo:'Mapa de músculos trabalhados na semana'})}${legendaHeat()}</section>
- ${!V.ns?`<div class="empty">Nenhum treino de musculação ${fsel?'desta ficha ':''}${off===0?'nesta semana ainda':'nesta semana'}.</div>`:`${faltam.length?`<div class="note warn">Sem estímulo ${off===0?'até agora':'nesta semana'}: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
- <section class="panel" style="gap:8px"><div class="eyebrow">Séries por músculo${ref?' · feito / previsto':''}</div>${barras(T,ref,lista)}
+ return `${topo}<section class="panel" style="gap:8px">${nav}${corpo(cor,{rotulo:varias?'Mapa de músculos trabalhados: média por semana no período':'Mapa de músculos trabalhados na semana'})}${legendaHeat()}</section>
+ ${!V.ns?`<div class="empty">Nenhum treino de musculação ${fsel?'desta ficha ':''}${varias?'neste período':off===0?'nesta semana ainda':'nesta semana'}.</div>`:`${faltam.length?`<div class="note warn">Sem estímulo ${varias?'no período':off===0?'até agora':'nesta semana'}: ${faltam.map(m=>MUSC[m].toLowerCase()).join(', ')}.</div>`:''}
+ <section class="panel" style="gap:8px"><div class="eyebrow">Séries por músculo${varias?' · média por semana':''}${ref?' · feito / previsto':''}</div>${barras(T,ref,lista)}
  <div class="small muted">${ref?'O traço vertical marca o previsto na ficha para a semana. ':''}Músculo secundário conta meia série. Corrida e aquecimento não entram na conta.${V.semClass.length?` Sem classificação (nome livre): ${esc(V.semClass.join(', '))}.`:''}</div></section>`}`}
 
 /* ================= 1RM estimado (fórmula de Epley) ================= */
@@ -248,3 +258,7 @@ document.addEventListener('input',e=>{const el=e.target;
 document.addEventListener('change',e=>{const el=e.target;
  if(el.id==='bibmus'&&S.bib){S.bib.mus=el.value;render()}
  if(el.id==='medSel'){S.medK=el.value;render()}});
+/* Período do mapa de músculos */
+document.addEventListener('change',e=>{const el=e.target;
+ if(el.id==='mperSel'){S.mper=el.value;S.mwk=0;render();return}
+ if(el.dataset.mp&&dataLocal(el.value)){S[el.dataset.mp]=el.value;render()}});
