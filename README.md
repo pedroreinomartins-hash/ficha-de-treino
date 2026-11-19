@@ -157,7 +157,7 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 
 ### Aulas com o Personal (nov/2026)
 
-- **Contratos e horários:** em *Aulas → Contratos* (modo Personal), cadastre os planos (mensal, trimestral, semestral; à vista ou em parcelas) e o contrato de cada aluno com os horários fixos (dia, hora, duração e local). As aulas das próximas 4 semanas são geradas sozinhas.
+- **Contratos e horários:** em *Aulas → Contratos* (modo Personal), cadastre os planos (mensal, trimestral, semestral; à vista ou em parcelas mensais, escolhendo o número de parcelas, de 2 até o número de meses do plano) e o contrato de cada aluno com os horários fixos (dia, hora, duração e local). As aulas das próximas 4 semanas são geradas sozinhas.
 - **Dupla:** no máximo 2 alunos no mesmo horário, e só no mesmo local; o app recusa um terceiro aluno ou local diferente.
 - **Presença com dois checks:** o aluno faz check-in (de 1 h antes até 24 h depois da aula) e o Personal confirma. Com só um check, a aula fica "aguardando confirmação" nas pendências do Personal.
 - **Faltas:** o aluno toca em "Não vou poder ir" e escolhe o motivo. Com 12 h ou mais de antecedência e justificativa aceita, gera **crédito de reposição válido por 30 dias**; com menos de 12 h, só como exceção do Personal. O banco calcula a antecedência, sem depender do celular.
