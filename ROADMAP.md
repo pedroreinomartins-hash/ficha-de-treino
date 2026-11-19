@@ -21,6 +21,12 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - Fotos nos recados do mural (Firebase Storage), reduzidas no celular antes do envio.
 - Notificações: pedido de entrada para o criador, aprovação para o membro, reações e novo desafio.
 
+## Aulas e pagamentos · quando houver o plano Blaze
+
+- Lembretes push: aula amanhã, aviso de falta para o Personal avaliar, mensalidade a vencer ou atrasada, renovação próxima.
+- Atestado em foto anexado à justificativa de falta (Firebase Storage).
+- Cobrança automática por empresa de pagamentos (Pix com confirmação automática, cartão recorrente), com taxas por transação.
+
 ## Outras ideias registradas
 
 - Geração de ficha por IA dentro do app (plano Premium). Hoje a ficha é criada colando a resposta de uma IA externa.
@@ -40,3 +46,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **06/11/2026 · Exercícios combinados:** combinar com o próximo (bi-set, tri-set, série gigante) e circuito com rodadas, descanso entre exercícios e entre rodadas; também no PDF.
 - **07/11/2026 · Mapa de músculos:** seletor de fichas compartilhado com os gráficos e modo “Previsto na ficha”, com comparação feito/previsto.
 - **09/11/2026 · Mapa de músculos:** seletor de período (semana, 4 ou 8 semanas, ciclo da ficha, personalizado), com média semanal.
+- **19/11/2026 · Aulas do Personal (sugestões do Carlos Igor):** contratos com horários e duplas, check do aluno e do Personal, faltas com 12 h de antecedência, reposição em 30 dias, renovações, planos mensal/trimestral/semestral, pagamentos com Pix copia e cola e recibo em PDF.

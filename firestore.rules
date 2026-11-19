@@ -251,5 +251,67 @@ service cloud.firestore {
         }
       }
     }
+
+    // ================= Gestão de aulas do Personal =================
+    // Só o Personal e o próprio aluno leem; o aluno só faz check-in, avisa falta, pede reposição e informa pagamento.
+    function meuAluno(aid) { return signed() && aid is string && exists(pth('perfis', aid)) && get(pth('perfis', aid)).data.get('personalId', '') == me(); }
+    function doPar(d) { return signed() && (d.personalId == me() || d.alunoId == me()); }
+    function agora() { return request.time.toMillis(); }
+
+    match /planos/{id} {
+      allow read: if isG() || (signed() && antigo().personalId == me());
+      allow create, update: if signed() && novo().personalId == me() && exists(pth('personais', me()))
+        && textoOK(novo().nome, 40) && novo().tipo in ['mensal', 'trimestral', 'semestral']
+        && novo().valor is number && novo().valor > 0 && novo().aulasSemana is number && novo().aulasSemana >= 1 && novo().aulasSemana <= 7
+        && (resource == null || antigo().personalId == me());
+      allow delete: if signed() && antigo().personalId == me();
+    }
+    match /pagcfg/{pid} {
+      allow read: if isG() || (signed() && (me() == pid || myPersonal() == pid));
+      allow write: if signed() && me() == pid && exists(pth('personais', me()))
+        && novo().keys().hasOnly(['tipo', 'chave', 'nome', 'cidade', 'at'])
+        && textoOK(novo().chave, 77) && textoOK(novo().nome, 25) && textoOK(novo().cidade, 15);
+    }
+    match /contratos/{id} {
+      allow read: if isG() || doPar(antigo());
+      allow create: if signed() && novo().personalId == me() && meuAluno(novo().alunoId) && novo().valor is number && novo().valor > 0;
+      allow update: if signed() && antigo().personalId == me() && novo().personalId == me() && novo().alunoId == antigo().alunoId;
+      allow delete: if signed() && antigo().personalId == me();
+    }
+    match /aulas/{id} {
+      allow read: if isG() || doPar(antigo());
+      allow create: if signed() && novo().personalId == me() && meuAluno(novo().alunoId)
+        && novo().inicioMs is number && novo().dur is number && novo().mes is string;
+      allow update: if
+        // Personal: confirma presença, decide faltas, cancela e corrige.
+           (signed() && antigo().personalId == me() && novo().personalId == me() && novo().alunoId == antigo().alunoId)
+        // Aluno: check-in de 1 h antes até 24 h depois do fim, se a aula não foi decidida nem avisada.
+        || (signed() && antigo().alunoId == me() && so(['ckAluno']) && novo().ckAluno is number
+             && antigo().get('situacao', null) == null && antigo().get('aviso', null) == null
+             && agora() >= antigo().inicioMs - 3600000 && agora() <= antigo().inicioMs + antigo().dur * 60000 + 86400000)
+        // Aluno: aviso de falta antes do início; o banco calcula se foi com 12 h ou mais (noPrazo).
+        || (signed() && antigo().alunoId == me() && so(['aviso']) && antigo().get('aviso', null) == null
+             && antigo().get('ckAluno', null) == null && antigo().get('situacao', null) == null && agora() < antigo().inicioMs
+             && novo().aviso.keys().hasOnly(['em', 'motivo', 'texto', 'noPrazo', 'decisao']) && novo().aviso.decisao == 'pendente'
+             && novo().aviso.noPrazo == (agora() <= antigo().inicioMs - 43200000)
+             && textoOK(novo().aviso.texto, 300) && textoOK(novo().aviso.motivo, 30));
+      allow delete: if signed() && antigo().personalId == me();
+    }
+    match /creditos/{id} {
+      allow read: if isG() || doPar(antigo());
+      allow create: if signed() && novo().personalId == me() && meuAluno(novo().alunoId)
+        && novo().vence is number && novo().vence <= agora() + 31 * 86400000;
+      allow update: if (signed() && antigo().personalId == me() && novo().personalId == me() && novo().alunoId == antigo().alunoId)
+        || (signed() && antigo().alunoId == me() && so(['pedido']) && antigo().get('usadoEm', null) == null
+             && novo().pedido.keys().hasOnly(['em', 'texto']) && textoOK(novo().pedido.texto, 200));
+      allow delete: if signed() && antigo().personalId == me();
+    }
+    match /pagamentos/{id} {
+      allow read: if isG() || doPar(antigo());
+      allow create: if signed() && novo().personalId == me() && meuAluno(novo().alunoId) && novo().valor is number && novo().valor > 0;
+      allow update: if (signed() && antigo().personalId == me() && novo().personalId == me() && novo().alunoId == antigo().alunoId)
+        || (signed() && antigo().alunoId == me() && so(['status', 'informadoEm']) && antigo().status == 'pendente' && novo().status == 'informado');
+      allow delete: if signed() && antigo().personalId == me();
+    }
   }
 }

@@ -155,6 +155,17 @@ As melhorias que dependem de notificações push estão em [`ROADMAP.md`](ROADMA
 - **Realizado:** séries feitas por músculo, no período escolhido (semana navegável, últimas 4 ou 8 semanas, ciclo da ficha ou datas à escolha; em vários períodos, média por semana); com uma ficha escolhida, cada barra mostra também o previsto ("4 / 5") e um traço marcando a meta.
 - **Previsto na ficha:** mapa e séries semanais que a ficha prevê, estimados pela sequência dos treinos e pela meta semanal, com aviso de músculos principais sem estímulo.
 
+### Aulas com o Personal (nov/2026)
+
+- **Contratos e horários:** em *Aulas → Contratos* (modo Personal), cadastre os planos (mensal, trimestral, semestral; à vista ou em parcelas) e o contrato de cada aluno com os horários fixos (dia, hora, duração e local). As aulas das próximas 4 semanas são geradas sozinhas.
+- **Dupla:** no máximo 2 alunos no mesmo horário, e só no mesmo local; o app recusa um terceiro aluno ou local diferente.
+- **Presença com dois checks:** o aluno faz check-in (de 1 h antes até 24 h depois da aula) e o Personal confirma. Com só um check, a aula fica "aguardando confirmação" nas pendências do Personal.
+- **Faltas:** o aluno toca em "Não vou poder ir" e escolhe o motivo. Com 12 h ou mais de antecedência e justificativa aceita, gera **crédito de reposição válido por 30 dias**; com menos de 12 h, só como exceção do Personal. O banco calcula a antecedência, sem depender do celular.
+- **Reposições:** créditos, pedidos do aluno ("terça ou quinta à tarde") e agendamento num horário livre ou vaga de dupla.
+- **Renovações:** aviso 15 dias antes do fim; "Renovar" cria o novo contrato com reajuste opcional e gera as novas mensalidades.
+- **Pagamentos:** mensalidades geradas pelo contrato; o aluno paga com **Pix copia e cola ou QR Code** (gerado no celular com a chave do Personal) e toca em "Já paguei"; o Personal confirma ou registra manualmente (Pix, dinheiro, cartão, transferência) e emite **recibo em PDF**. O app não processa pagamentos.
+- **Painel "Hoje"** do Personal: aulas do dia (duplas agrupadas) e pendências (avisos de falta, presenças a resolver, pedidos de reposição, renovações, pagamentos informados ou atrasados).
+
 ### Exercícios combinados (nov/2026)
 
 - No editor da ficha, o botão **+ Combinar com o próximo** entre dois exercícios junta-os num grupo, mostrado numa moldura: 2 exercícios = **bi-set**, 3 = **tri-set**, 4 ou mais = **série gigante**; com descanso entre exercícios, vira **circuito**.
@@ -186,6 +197,7 @@ Abra o endereço no Chrome, toque em **⋮** e depois em **Instalar app** (ou **
 | `js/app.js` | Lógica do app |
 | `js/config.js` | Configuração do Firebase |
 | `js/exercicios.js` | Fotos e instruções dos exercícios (Free Exercise DB) |
+| `js/aulas.js` | Aulas do Personal: contratos, presença, faltas, reposições, renovações, planos, pagamentos e Pix |
 | `js/pdf.js` | Exportação da ficha e do relatório de progressão em PDF |
 | `js/comunidades.js` | Comunidades: mural, aprovação, ranking e desafios |
 | `js/recursos.js` | Técnicas avançadas, aniversário, vencimento, avisos ao Personal e condução do treino |
