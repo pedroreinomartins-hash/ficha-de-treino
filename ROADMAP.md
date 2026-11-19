@@ -47,3 +47,4 @@ Sugestões do Personal Carlos Igor (03/11/2026). Dependem de **Firebase Cloud Fu
 - **07/11/2026 · Mapa de músculos:** seletor de fichas compartilhado com os gráficos e modo “Previsto na ficha”, com comparação feito/previsto.
 - **09/11/2026 · Mapa de músculos:** seletor de período (semana, 4 ou 8 semanas, ciclo da ficha, personalizado), com média semanal.
 - **19/11/2026 · Aulas do Personal (sugestões do Carlos Igor):** contratos com horários e duplas, check do aluno e do Personal, faltas com 12 h de antecedência, reposição em 30 dias, renovações, planos mensal/trimestral/semestral, pagamentos com Pix copia e cola e recibo em PDF.
+- **19/11/2026 · Aulas e pagamentos:** número de parcelas no plano; baixa de cobrança com o motivo “Cancelado”; editar contrato (horários e término) e cancelar contrato, com baixa opcional das cobranças em aberto.
